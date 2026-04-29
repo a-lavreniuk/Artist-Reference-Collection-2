@@ -5,6 +5,18 @@
   color: var(--text-elev-primary);
 }
 
+html,
+body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 .arc2-navbar-page .arc2-navbar-shell {
   min-height: 100vh;
 }
@@ -102,5 +114,20 @@
 .arc2-navbar-page .arc-navbar-icon-svg {
   width: 100%;
   height: 100%;
+  display: block;
+}
+
+.arc2-navbar-page .arc2-content-section {
+  min-height: calc(100vh - 140px);
+}
+
+.arc2-navbar-page .arc2-content-section--hidden {
+  display: none;
+}
+
+.arc2-navbar-page .arc2-content-frame {
+  width: 100%;
+  min-height: calc(100vh - 140px);
+  border: 0;
   display: block;
 }

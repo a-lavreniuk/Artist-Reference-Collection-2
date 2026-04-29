@@ -18,6 +18,7 @@
             <button class="tab-button" data-section="collections" type="button" role="tab" aria-selected="false">Коллекции</button>
             <button class="tab-button" data-section="moodboard" type="button" role="tab" aria-selected="false">Мудборд</button>
             <button class="tab-button" data-section="settings" type="button" role="tab" aria-selected="false">Настройки</button>
+            <button class="tab-button" data-section="uiKit" type="button" role="tab" aria-selected="false">UI-Kit</button>
           </div>
         </div>
 
@@ -44,6 +45,9 @@
         <div class="arc2-navbar-secondary-actions" id="arc2NavbarSecondaryActions"></div>
       </div>
     </header>
+    <section class="arc2-content-section arc2-content-section--hidden" id="arc2UiKitSection">
+      <iframe class="arc2-content-frame" src="./arc-2-ui/arc-2-ui.html" title="ARC 2 UI-Kit"></iframe>
+    </section>
   </main>
 
   <script>
@@ -93,6 +97,10 @@
             { label: 'История', active: false, iconClass: 'arc2-icon-history' },
             { label: 'Поиск дублей', active: false, iconClass: 'arc2-icon-copy' }
           ]
+        },
+        uiKit: {
+          title: 'UI-Kit',
+          type: 'titleOnly'
         },
         add: {
           title: 'Добавить карточки',
@@ -309,6 +317,39 @@
         hydrateNavbarIcons(secondaryActionsNode);
       };
 
+      const uiKitSectionNode = document.getElementById('arc2UiKitSection');
+      const uiKitFrameNode = uiKitSectionNode instanceof HTMLElement
+        ? uiKitSectionNode.querySelector('.arc2-content-frame')
+        : null;
+      const applyHiddenScrollbarsToUiKitFrame = () => {
+        if (!(uiKitFrameNode instanceof HTMLIFrameElement)) return;
+        const frameDocument = uiKitFrameNode.contentDocument;
+        if (!frameDocument || !frameDocument.head || !frameDocument.body) return;
+        if (frameDocument.getElementById('arc2-hide-scrollbars-style')) return;
+        const style = frameDocument.createElement('style');
+        style.id = 'arc2-hide-scrollbars-style';
+        style.textContent = `
+          html, body {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+          }
+          html::-webkit-scrollbar,
+          body::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+          }
+        `;
+        frameDocument.head.appendChild(style);
+      };
+      if (uiKitFrameNode instanceof HTMLIFrameElement) {
+        uiKitFrameNode.addEventListener('load', applyHiddenScrollbarsToUiKitFrame);
+      }
+      const renderSectionContent = (sectionKey) => {
+        if (!(uiKitSectionNode instanceof HTMLElement)) return;
+        const showUiKit = sectionKey === 'uiKit';
+        uiKitSectionNode.classList.toggle('arc2-content-section--hidden', !showUiKit);
+      };
+
       const setActiveTab = (buttons, activeButton) => {
         buttons.forEach((tab) => {
           tab.classList.remove('is-active');
@@ -320,14 +361,17 @@
 
       mainTabs.forEach((button) => {
         button.addEventListener('click', () => {
+          const sectionKey = button.dataset.section || 'gallery';
           setActiveTab(mainTabs, button);
-          renderSecondRow(button.dataset.section || 'gallery');
+          renderSecondRow(sectionKey);
+          renderSectionContent(sectionKey);
         });
       });
 
       if (addTriggerButton instanceof HTMLButtonElement) {
         addTriggerButton.addEventListener('click', () => {
           renderSecondRow('add');
+          renderSectionContent('add');
         });
       }
 
@@ -368,8 +412,10 @@
       }
 
       renderSecondRow('gallery');
+      renderSectionContent('gallery');
       updateInputState();
       hydrateNavbarIcons(document);
+      applyHiddenScrollbarsToUiKitFrame();
     })();
   </script>
 </body>
