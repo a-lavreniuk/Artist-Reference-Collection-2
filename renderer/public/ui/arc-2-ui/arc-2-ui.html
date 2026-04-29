@@ -1,0 +1,1855 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARC-2 UI Standalone</title>
+  <link rel="stylesheet" href="./arc-2-ui.css?v=20260428-alert-tokens-manual" />
+</head>
+<body data-elevation="default" data-typo-role="primary" data-typo-tone="white" data-typo-state="default" data-btn-size="m" data-input-size="m">
+  <main class="page">
+    <section class="panel elevation-default top-controls">
+      <div class="control-grid top-controls-grid">
+        <div class="control-group">
+          <div class="id-tag">EL-ELEVATION-TABS</div>
+          <div class="tabs" role="tablist" aria-label="Elevation">
+            <button class="tab-button" data-elevation-tab="sunken" type="button">Sunken</button>
+            <button class="tab-button is-active" data-elevation-tab="default" type="button">Default</button>
+            <button class="tab-button" data-elevation-tab="raised" type="button">Raised</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <div class="id-tag">EL-SIZE-TABS</div>
+          <div class="tabs" role="tablist" aria-label="Global size">
+            <button class="tab-button" data-size-tab="l" type="button">L</button>
+            <button class="tab-button is-active" data-size-tab="m" type="button">M</button>
+            <button class="tab-button" data-size-tab="s" type="button">S</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel elevation-default" id="typographyScope" data-typo-role="primary" data-typo-tone="white" data-typo-state="default">
+      <h2 class="h2">Typography</h2>
+      <div class="stack">
+        <div class="id-tag">EL-TYPO-H1</div>
+        <div class="h1 typo-preview">Придумайте названия для меток и описание</div>
+        <hr class="separator" />
+        <div class="id-tag">EL-TYPO-H2</div>
+        <div class="h2 typo-preview">Отменить добавление файлов?</div>
+        <hr class="separator" />
+        <div class="id-tag">EL-TYPO-H3</div>
+        <div class="h3 typo-preview">Сменить местоположение хранилища?</div>
+        <hr class="separator" />
+
+        <div class="id-tag">EL-TYPO-P-L</div>
+        <div class="text-l text-flow-l typo-preview">
+          <p>Преимущество сочетания качественных материалов позволяет выполнять важные задания. Дополнительные возможности обеспечивают широкое применение <a href="#" class="inline-link">конструкций</a>. Таким образом, новая модель организационной структуры способствует подготовке и разработке. Аналогичным образом, постоянное информационно-пропагандистское обеспечение нашей деятельности требует от нас системного анализа.</p>
+          <p>Необходимость укрепления и развития структур играет важную роль. Повседневная практика показывает, что реализация плановых заданий способствует. С другой стороны, дальнейшее развитие технологий требует от нас внимания. Таким образом, корректировка позиций играет важную роль.</p>
+          <p>Нумерованный список позиций:</p>
+          <ol class="text-list text-list-l">
+            <li>Первая характеристика определяет эффективность.</li>
+            <li>Вторая особенность усиливает результативность.</li>
+            <li>Третья опция расширяет функциональность.</li>
+            <li>Четвёртая функция оптимизирует процессы.</li>
+          </ol>
+          <p>Список маркерами свойств:</p>
+          <ul class="text-list text-list-l text-list-disc">
+            <li>Системный подход к задачам.</li>
+            <li>Расширенные возможности интеграции.</li>
+            <li>Оптимизация временных затрат.</li>
+            <li>Повышенная надёжность компонентов.</li>
+            <li>Гибкая настройка параметров.</li>
+          </ul>
+        </div>
+        <hr class="separator" />
+
+        <div class="id-tag">EL-TYPO-P-M</div>
+        <div class="text-m text-flow-m typo-preview">
+          <p>Преимущество сочетания качественных материалов позволяет выполнять важные задания. Дополнительные возможности обеспечивают широкое применение конструкций. Таким образом, новая модель организационной структуры способствует подготовке и <a href="#" class="inline-link">разработке</a>. Аналогичным образом, постоянное информационно-пропагандистское обеспечение нашей деятельности требует от нас системного анализа.</p>
+          <p>Необходимость укрепления и развития структур играет важную роль. Повседневная практика показывает, что реализация плановых заданий способствует. С другой стороны, дальнейшее развитие технологий требует от нас внимания. Таким образом, корректировка позиций играет важную роль.</p>
+          <p>Нумерованный список позиций:</p>
+          <ol class="text-list text-list-m">
+            <li>Первая характеристика определяет эффективность.</li>
+            <li>Вторая особенность усиливает результативность.</li>
+            <li>Третья опция расширяет функциональность.</li>
+            <li>Четвёртая функция оптимизирует процессы.</li>
+          </ol>
+          <p>Список маркерами свойств:</p>
+          <ul class="text-list text-list-m text-list-disc">
+            <li>Системный подход к задачам.</li>
+            <li>Расширенные возможности интеграции.</li>
+            <li>Оптимизация временных затрат.</li>
+            <li>Повышенная надёжность компонентов.</li>
+            <li>Гибкая настройка параметров.</li>
+          </ul>
+        </div>
+        <hr class="separator" />
+
+        <div class="id-tag">EL-TYPO-P-S</div>
+        <p class="text-s text-flow-s typo-preview">
+          Преимущество сочетания качественных материалов позволяет выполнять важные задания. Дополнительные возможности обеспечивают широкое применение конструкций. Таким образом, новая модель организационной структуры способствует подготовке и разработке. Аналогичным образом, постоянное информационно-пропагандистское обеспечение нашей деятельности требует от нас системного анализа.
+        </p>
+      </div>
+    </section>
+
+    <section class="panel elevation-default buttons-panel">
+      <h2 class="h2">Buttons</h2>
+
+      <div class="demo-row">
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-BTN-FULL-PRIMARY</div>
+          <button class="btn btn-primary btn-ds">
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+            <span class="btn-ds__value">Добавить</span>
+            <span class="btn-ds__counter">42</span>
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-BTN-FULL-SECONDARY</div>
+          <button class="btn btn-secondary btn-ds">
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+            <span class="btn-ds__value">Выбрать</span>
+            <span class="btn-ds__counter">7</span>
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-BTN-FULL-OUTLINE</div>
+          <button class="btn btn-outline btn-ds">
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+            <span class="btn-ds__value">Фильтр</span>
+            <span class="btn-ds__counter">3</span>
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-BTN-FULL-GHOST</div>
+          <button class="btn btn-ghost btn-ds">
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+            <span class="btn-ds__value">Подробнее</span>
+            <span class="btn-ds__counter">1</span>
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-BTN-FULL-DANGER</div>
+          <button class="btn btn-danger btn-ds">
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+            <span class="btn-ds__value">Удалить</span>
+            <span class="btn-ds__counter">0</span>
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-BTN-FULL-SUCCESS</div>
+          <button class="btn btn-success btn-ds">
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+            <span class="btn-ds__value">Применить</span>
+            <span class="btn-ds__counter">12</span>
+            <span class="btn-ds__icon" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="demo-row">
+        <div class="sample">
+          <div class="id-tag">EL-BTN-ICON-PRIMARY</div>
+          <button class="btn btn-primary btn-icon-only"><span class="btn-icon-only__glyph" aria-hidden="true"></span></button>
+        </div>
+        <div class="sample">
+          <div class="id-tag">EL-BTN-ICON-SECONDARY</div>
+          <button class="btn btn-secondary btn-icon-only"><span class="btn-icon-only__glyph" aria-hidden="true"></span></button>
+        </div>
+        <div class="sample">
+          <div class="id-tag">EL-BTN-ICON-OUTLINE</div>
+          <button class="btn btn-outline btn-icon-only"><span class="btn-icon-only__glyph" aria-hidden="true"></span></button>
+        </div>
+        <div class="sample">
+          <div class="id-tag">EL-BTN-ICON-GHOST</div>
+          <button class="btn btn-ghost btn-icon-only"><span class="btn-icon-only__glyph" aria-hidden="true"></span></button>
+        </div>
+        <div class="sample">
+          <div class="id-tag">EL-BTN-ICON-DANGER</div>
+          <button class="btn btn-danger btn-icon-only"><span class="btn-icon-only__glyph" aria-hidden="true"></span></button>
+        </div>
+        <div class="sample">
+          <div class="id-tag">EL-BTN-ICON-SUCCESS</div>
+          <button class="btn btn-success btn-icon-only"><span class="btn-icon-only__glyph" aria-hidden="true"></span></button>
+        </div>
+      </div>
+
+      <hr class="separator" />
+
+      <div class="demo-row">
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-BTNGROUP-DEFAULT</div>
+          <div class="btn-group btn-group-ds">
+            <button class="btn btn-outline btn-ds">
+              <span class="btn-ds__icon" aria-hidden="true"></span><span class="btn-ds__value">Archive</span><span class="btn-ds__counter">8</span>
+            </button>
+            <button class="btn btn-outline btn-ds">
+              <span class="btn-ds__icon" aria-hidden="true"></span><span class="btn-ds__value">Report</span>
+            </button>
+            <button class="btn btn-outline btn-icon-only"><span class="btn-icon-only__glyph" aria-hidden="true"></span></button>
+            <button class="btn btn-outline btn-icon-only"><span class="btn-icon-only__glyph" aria-hidden="true"></span></button>
+          </div>
+        </div>
+      </div>
+
+      <hr class="separator" />
+
+      <div class="demo-row">
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-TABS-DEFAULT</div>
+          <div class="tabs" role="tablist" aria-label="Tabs default">
+            <button class="tab-button is-active" type="button"><span class="tab-icon" aria-hidden="true"></span><span>Day</span><span class="tab-counter">128</span></button>
+            <button class="tab-button" type="button"><span class="tab-icon" aria-hidden="true"></span><span>Week</span></button>
+            <button class="tab-button tab-icon-only" type="button"><span class="tab-icon" aria-hidden="true"></span></button>
+            <button class="tab-button tab-icon-only" type="button"><span class="tab-icon" aria-hidden="true"></span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel elevation-default tags-panel">
+      <h2 class="h2">Tags</h2>
+      <div class="demo-row tags-demo">
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-TAG-GROUP</div>
+          <div class="tags-row">
+            <button class="chip" type="button" data-tag-toggle><span class="chip-color" aria-hidden="true"></span><span>Landscape</span><span class="chip-count">32</span><span class="chip-remove" aria-hidden="true">✕</span></button>
+            <button class="chip" type="button" data-tag-toggle><span class="chip-color" aria-hidden="true"></span><span>Portrait</span><span class="chip-count">8</span><span class="chip-remove" aria-hidden="true">✕</span></button>
+            <button class="chip" type="button" data-tag-toggle><span class="chip-color" aria-hidden="true"></span><span>Archive</span><span class="chip-remove" aria-hidden="true">✕</span></button>
+            <button class="chip" type="button" data-tag-toggle><span class="chip-color" aria-hidden="true"></span><span>Favorites</span><span class="chip-remove" aria-hidden="true">✕</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel elevation-default inputs-panel">
+      <h2 class="h2">Inputs</h2>
+
+      <div class="inputs-group">
+        <div class="id-tag">EL-INP-GROUP-INPUT</div>
+        <h3 class="h3">Input</h3>
+        <div class="inputs-column">
+          <label class="field input-live" data-live-input>
+            <input class="input" placeholder="Введите значение..." />
+            <button class="input-inline-icon input-inline-icon-floating input-clear-btn input-inline-icon--close" type="button" aria-label="Очистить"></button>
+          </label>
+          <label class="field field-error input-live" data-live-input>
+            <input class="input" value="Неверный формат" placeholder="Введите значение..." />
+            <button class="input-inline-icon input-inline-icon-floating input-clear-btn input-inline-icon--close" type="button" aria-label="Очистить"></button>
+          </label>
+          <label class="field"><input class="input" placeholder="Недоступно" disabled /></label>
+        </div>
+      </div>
+      <hr class="separator" />
+
+      <div class="inputs-group">
+        <div class="id-tag">EL-INP-GROUP-SELECTOR</div>
+        <h3 class="h3">Selector</h3>
+        <div class="inputs-column">
+          <div class="field selector-field" data-selector>
+            <button class="input pseudo-select input-slots" type="button" data-selector-trigger aria-expanded="false">
+              <span class="selector-value slot-value">Выберите значение</span>
+              <span class="selector-actions slot-trailing">
+                <span class="selector-clear" aria-hidden="true"></span>
+                <span class="selector-caret" aria-hidden="true"></span>
+              </span>
+            </button>
+            <div class="selector-dropdown" hidden>
+              <div class="input search-field selector-search input-slots">
+                <span class="search-icon slot-leading" aria-hidden="true"></span>
+                <input class="search-inner slot-value" placeholder="Search" />
+              </div>
+              <div class="dropdown-separator"></div>
+              <div class="dropdown-list">
+                <button class="dropdown-row" type="button"><span>Landscape</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Portrait</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row is-checked" type="button"><span>Animation</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Character</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Creature</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Environment</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Hard Surface</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Props</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>UI</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Storyboard</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Color Script</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Concept Art</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Lighting</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Compositing</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Matte Painting</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+              </div>
+              <div class="dropdown-separator"></div>
+              <button class="btn btn-outline btn-ds selector-reset" type="button">Очистить</button>
+            </div>
+          </div>
+          <div class="field field-error selector-field" data-selector>
+            <button class="input pseudo-select input-slots" type="button" data-selector-trigger aria-expanded="false">
+              <span class="selector-value slot-value">Неверный выбор</span>
+              <span class="selector-actions slot-trailing">
+                <span class="selector-clear" aria-hidden="true"></span>
+                <span class="selector-caret" aria-hidden="true"></span>
+              </span>
+            </button>
+            <div class="selector-dropdown" hidden>
+              <div class="input search-field selector-search input-slots">
+                <span class="search-icon slot-leading" aria-hidden="true"></span>
+                <input class="search-inner slot-value" placeholder="Search" />
+              </div>
+              <div class="dropdown-separator"></div>
+              <div class="dropdown-list">
+                <button class="dropdown-row" type="button"><span>Landscape</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Portrait</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row is-checked" type="button"><span>Animation</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Character</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Creature</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Environment</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Hard Surface</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Props</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>UI</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Storyboard</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Color Script</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Concept Art</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Lighting</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Compositing</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Matte Painting</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+              </div>
+              <div class="dropdown-separator"></div>
+              <button class="btn btn-outline btn-ds selector-reset" type="button">Очистить</button>
+            </div>
+          </div>
+          <div class="field">
+            <button class="input pseudo-select input-slots" type="button" disabled>
+              <span class="slot-value">Недоступно</span>
+              <span class="selector-caret slot-trailing" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <hr class="separator" />
+
+      <div class="inputs-group">
+        <div class="id-tag">EL-INP-GROUP-TEXTAREA</div>
+        <h3 class="h3">Textarea</h3>
+        <div class="inputs-column">
+          <label class="field"><textarea class="input textarea" placeholder="Многострочный ввод"></textarea></label>
+          <label class="field"><textarea class="input textarea" placeholder="Недоступно" disabled></textarea></label>
+        </div>
+      </div>
+      <hr class="separator" />
+
+      <div class="inputs-group">
+        <div class="id-tag">EL-INP-GROUP-UPLOADER</div>
+        <h3 class="h3">Uploader</h3>
+        <div class="inputs-column">
+          <div class="field uploader-live" data-live-uploader data-empty-value="Файл не выбран">
+            <button class="input uploader input-slots" type="button" aria-label="Загрузить файл">
+              <span class="uploader-prepend slot-prepend">Выберите файл</span>
+              <span class="uploader-value slot-value">Файл не выбран</span>
+              <span class="input-inline-icon input-inline-icon--trash uploader-clear slot-trailing" aria-hidden="true"></span>
+            </button>
+            <input class="uploader-file-input" type="file" hidden />
+          </div>
+          <div class="field field-error uploader-live has-file" data-live-uploader data-empty-value="Файл не выбран">
+            <button class="input uploader input-slots" type="button" aria-label="Загрузить файл">
+              <span class="uploader-prepend slot-prepend">Выберите файл</span>
+              <span class="uploader-value slot-value">document.psd</span>
+              <span class="input-inline-icon input-inline-icon--trash uploader-clear slot-trailing" aria-hidden="true"></span>
+            </button>
+            <input class="uploader-file-input" type="file" hidden />
+          </div>
+          <div class="field">
+            <button class="input uploader input-slots" type="button" disabled aria-label="Загрузить файл">
+              <span class="uploader-prepend slot-prepend">Выберите файл</span>
+              <span class="uploader-value slot-value">Недоступно</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <hr class="separator" />
+
+      <div class="inputs-group">
+        <div class="id-tag">EL-INP-GROUP-SEARCH</div>
+        <h3 class="h3">Search</h3>
+        <div class="inputs-column">
+          <label class="field search-live" data-live-search>
+            <div class="input search-field input-slots">
+              <span class="search-icon slot-leading" aria-hidden="true"></span>
+              <input class="search-inner slot-value" placeholder="Search" />
+              <button class="input-inline-icon search-clear-btn input-inline-icon--close slot-trailing" type="button" aria-label="Очистить"></button>
+            </div>
+          </label>
+          <label class="field field-error search-live" data-live-search>
+            <div class="input search-field input-slots">
+              <span class="search-icon slot-leading" aria-hidden="true"></span>
+              <input class="search-inner slot-value" value="Ошибка запроса" placeholder="Search" />
+              <button class="input-inline-icon search-clear-btn input-inline-icon--close slot-trailing" type="button" aria-label="Очистить"></button>
+            </div>
+          </label>
+        </div>
+      </div>
+      <hr class="separator" />
+
+      <div class="inputs-group">
+        <div class="id-tag">EL-INP-GROUP-SEARCH-MULTI</div>
+        <h3 class="h3">Search Multiselect</h3>
+        <div class="field field-full search-multiselect-live" data-live-search-multi>
+          <div class="input search-multiselect input--size-l input-slots">
+            <span class="search-icon slot-leading" aria-hidden="true"></span>
+            <span class="chip chip-active"><span class="chip-color" aria-hidden="true"></span><span>Value</span><span class="chip-count">128</span><span class="chip-remove">✕</span></span>
+            <span class="chip chip-active"><span class="chip-color" aria-hidden="true"></span><span>Value</span><span class="chip-count">128</span><span class="chip-remove">✕</span></span>
+            <span class="chip chip-active"><span class="chip-color" aria-hidden="true"></span><span>Value</span><span class="chip-count">128</span><span class="chip-remove">✕</span></span>
+            <input class="search-inner slot-value" placeholder="Value" />
+            <button class="input-inline-icon search-multiselect-clear-btn input-inline-icon--close slot-trailing" type="button" aria-label="Очистить"></button>
+          </div>
+        </div>
+      </div>
+      <hr class="separator" />
+
+      <div class="inputs-group">
+        <div class="id-tag">EL-INP-GROUP-COLOR-PICKER</div>
+        <h3 class="h3">Color picker</h3>
+        <div class="field" data-main-color-picker>
+          <div class="input color-input input-slots">
+            <span class="color-prepend slot-prepend">HEX</span>
+            <input class="color-value-input slot-value" data-main-color-input value="#EAB308" />
+            <button class="color-swatch-inline slot-trailing" data-main-color-swatch data-arc-modal-open="arcModalHostColor" type="button" aria-label="Открыть палитру" style="background:#EAB308"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel elevation-default">
+      <h2 class="h2">Modals</h2>
+      <div class="demo-row">
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-MODAL-TRIGGER-GROUP</div>
+          <div class="btn-group btn-group-ds modal-trigger-grid">
+            <button type="button" class="btn btn-outline btn-ds" data-arc-modal-open="arcModalHost1"><span class="btn-ds__value">Title + footer 1</span></button>
+            <button type="button" class="btn btn-outline btn-ds" data-arc-modal-open="arcModalHost2"><span class="btn-ds__value">Title/subtitle + footer 2</span></button>
+            <button type="button" class="btn btn-outline btn-ds" data-arc-modal-open="arcModalHost3"><span class="btn-ds__value">Tabs + footer 3</span></button>
+            <button type="button" class="btn btn-outline btn-ds" data-arc-modal-open="arcModalHost4"><span class="btn-ds__value">Все слоты + footer 2</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel elevation-default">
+      <h2 class="h2">Alerts</h2>
+      <div class="demo-row">
+        <div class="sample sample-wide">
+          <div class="id-tag">EL-ALERT-TRIGGER-GROUP</div>
+          <div class="btn-group btn-group-ds alert-trigger-grid">
+            <button type="button" class="btn btn-outline btn-ds" data-demo-alert="success"><span class="btn-ds__value">Success alert</span></button>
+            <button type="button" class="btn btn-outline btn-ds" data-demo-alert="info"><span class="btn-ds__value">Info alert</span></button>
+            <button type="button" class="btn btn-outline btn-ds" data-demo-alert="warning"><span class="btn-ds__value">Warning alert</span></button>
+            <button type="button" class="btn btn-outline btn-ds" data-demo-alert="danger"><span class="btn-ds__value">Error alert</span></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel elevation-default">
+      <h2 class="h2">Токены (быстрая сверка)</h2>
+      <div class="id-tag">EL-TOKEN-TABLE-GRAY</div>
+      <div class="token-grid">
+        <div class="token t50">gray/50 · #F2F3F4</div>
+        <div class="token t100">gray/100 · #DCDDE0</div>
+        <div class="token t200">gray/200 · #C5C7CC</div>
+        <div class="token t300">gray/300 · #AFB0B8</div>
+        <div class="token t400">gray/400 · #989AA4</div>
+        <div class="token t500">gray/500 · #828490</div>
+        <div class="token t600">gray/600 · #6D6F79</div>
+        <div class="token t700">gray/700 · #585962</div>
+        <div class="token t800">gray/800 · #43444B</div>
+        <div class="token t900">gray/900 · #2E2F34</div>
+        <div class="token t1000">gray/1000 · #1A1A1D</div>
+      </div>
+
+      <div class="id-tag">EL-TOKEN-TABLE-RED</div>
+      <div class="token-grid">
+        <div class="token r100">red/100 · #FFADB4</div>
+        <div class="token r200">red/200 · #FD9198</div>
+        <div class="token r300">red/300 · #FA767C</div>
+        <div class="token r400">red/400 · #F55C60</div>
+        <div class="token r500">red/500 · #EF4444</div>
+        <div class="token r600">red/600 · #CC3936</div>
+        <div class="token r700">red/700 · #A72E2A</div>
+        <div class="token r800">red/800 · #82231E</div>
+        <div class="token r900">red/900 · #5B1814</div>
+        <div class="token r1000">red/1000 · #330E0A</div>
+      </div>
+
+      <div class="id-tag">EL-TOKEN-TABLE-YELLOW</div>
+      <div class="token-grid">
+        <div class="token y100">yellow/100 · #FCF3D9</div>
+        <div class="token y200">yellow/200 · #FDD173</div>
+        <div class="token y300">yellow/300 · #F8C74D</div>
+        <div class="token y400">yellow/400 · #F2BD28</div>
+        <div class="token y500">yellow/500 · #EAB308</div>
+        <div class="token y600">yellow/600 · #C89C03</div>
+        <div class="token y700">yellow/700 · #A58200</div>
+        <div class="token y800">yellow/800 · #816700</div>
+        <div class="token y900">yellow/900 · #5B4A00</div>
+        <div class="token y1000">yellow/1000 · #332B00</div>
+      </div>
+
+      <div class="id-tag">EL-TOKEN-TABLE-GREEN</div>
+      <div class="token-grid">
+        <div class="token g100">green/100 · #99EAC8</div>
+        <div class="token g200">green/200 · #75E0B5</div>
+        <div class="token g300">green/300 · #52D4A3</div>
+        <div class="token g400">green/400 · #30C792</div>
+        <div class="token g500">green/500 · #10B981</div>
+        <div class="token g600">green/600 · #0B9E70</div>
+        <div class="token g700">green/700 · #06825D</div>
+        <div class="token g800">green/800 · #03664A</div>
+        <div class="token g900">green/900 · #014835</div>
+        <div class="token g1000">green/1000 · #00281E</div>
+      </div>
+
+      <div class="id-tag">EL-TOKEN-TABLE-BLUE</div>
+      <div class="token-grid">
+        <div class="token b100">blue/100 · #99E7FF</div>
+        <div class="token b200">blue/200 · #73DAFC</div>
+        <div class="token b300">blue/300 · #4FCAF7</div>
+        <div class="token b400">blue/400 · #2EB8F1</div>
+        <div class="token b500">blue/500 · #0EA5E9</div>
+        <div class="token b600">blue/600 · #0889C7</div>
+        <div class="token b700">blue/700 · #046DA4</div>
+        <div class="token b800">blue/800 · #005280</div>
+        <div class="token b900">blue/900 · #00385A</div>
+        <div class="token b1000">blue/1000 · #001E33</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="demoAlertHost" class="demo-alert-host" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ARC-2 modals: без backdrop, raised + box-shadow -->
+  <div class="arc-modal-host" id="arcModalHost1" hidden aria-hidden="true">
+    <section
+      class="arc-modal"
+      data-elevation="raised"
+      data-input-size="s"
+      data-btn-size="s"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="arcModal1Title"
+    >
+      <header class="arc-modal__header arc-modal__header--title">
+        <h3 class="arc-modal__title" id="arcModal1Title">Подтверждение</h3>
+        <button type="button" class="arc-modal__close" data-arc-modal-close aria-label="Закрыть">
+          <span class="tab-icon" aria-hidden="true"></span>
+        </button>
+      </header>
+      <div class="arc-modal__body">
+        <div class="arc-modal__slot">
+          <p class="arc-modal__slot-text">Краткий текст в теле модального окна (Paragraph/S).</p>
+        </div>
+      </div>
+      <footer class="arc-modal__footer arc-modal__footer--actions-1">
+        <button type="button" class="btn btn-primary btn-ds btn-s" data-arc-modal-close><span class="btn-ds__value">Готово</span></button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="arc-modal-host" id="arcModalHost2" hidden aria-hidden="true">
+    <section
+      class="arc-modal"
+      data-elevation="raised"
+      data-input-size="s"
+      data-btn-size="s"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="arcModal2Title"
+    >
+      <header class="arc-modal__header arc-modal__header--title-subtitle">
+        <div class="arc-modal__title-block">
+          <h3 class="arc-modal__title" id="arcModal2Title">Сменить хранилище?</h3>
+          <p class="arc-modal__subtitle">Дополнительное пояснение в одну строку.</p>
+        </div>
+        <button type="button" class="arc-modal__close" data-arc-modal-close aria-label="Закрыть">
+          <span class="tab-icon" aria-hidden="true"></span>
+        </button>
+      </header>
+      <div class="arc-modal__body">
+        <div class="arc-modal__slot">
+          <p class="arc-modal__slot-text">Тело с пояснением и двумя кнопками внизу.</p>
+        </div>
+      </div>
+      <footer class="arc-modal__footer arc-modal__footer--actions-2">
+        <button type="button" class="btn btn-outline btn-ds btn-s" data-arc-modal-close><span class="btn-ds__value">Отмена</span></button>
+        <button type="button" class="btn btn-primary btn-ds btn-s" data-arc-modal-close><span class="btn-ds__value">Продолжить</span></button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="arc-modal-host" id="arcModalHost3" hidden aria-hidden="true">
+    <section
+      class="arc-modal"
+      data-elevation="raised"
+      data-input-size="s"
+      data-btn-size="s"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Модальное окно с вкладками в заголовке"
+    >
+      <header class="arc-modal__header arc-modal__header--tabs">
+        <div class="arc-modal__header-tabs tabs" role="tablist" aria-label="Разделы">
+          <button type="button" class="tab-button is-active" role="tab" aria-selected="true">Active Tab</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false">Second tab</button>
+          <button type="button" class="tab-button" role="tab" aria-selected="false">Third tab</button>
+        </div>
+        <button type="button" class="arc-modal__close" data-arc-modal-close aria-label="Закрыть">
+          <span class="tab-icon" aria-hidden="true"></span>
+        </button>
+      </header>
+      <div class="arc-modal__body">
+        <div class="arc-modal__slot">
+          <p class="arc-modal__slot-text">Контент при активной вкладке.</p>
+        </div>
+      </div>
+      <footer class="arc-modal__footer arc-modal__footer--actions-3">
+        <button type="button" class="btn btn-danger btn-ds btn-s" data-arc-modal-close><span class="btn-ds__value">Удалить</span></button>
+        <div class="arc-modal__footer-right">
+          <button type="button" class="btn btn-outline btn-ds btn-s" data-arc-modal-close><span class="btn-ds__value">Отмена</span></button>
+          <button type="button" class="btn btn-primary btn-ds btn-s" data-arc-modal-close><span class="btn-ds__value">Сохранить</span></button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <div class="arc-modal-host" id="arcModalHost4" hidden aria-hidden="true">
+    <section
+      class="arc-modal"
+      data-elevation="raised"
+      data-input-size="s"
+      data-btn-size="s"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="arcModal4Title"
+    >
+      <header class="arc-modal__header arc-modal__header--title">
+        <h3 class="arc-modal__title" id="arcModal4Title">Все слоты body</h3>
+        <button type="button" class="arc-modal__close" data-arc-modal-close aria-label="Закрыть">
+          <span class="tab-icon" aria-hidden="true"></span>
+        </button>
+      </header>
+      <div class="arc-modal__body">
+        <div class="arc-modal__slot">
+          <p class="arc-modal__slot-text">
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+          </p>
+        </div>
+        <div class="arc-modal__slot">
+          <label class="field input-live" data-live-input>
+            <input class="input" placeholder="Value" />
+            <button class="input-inline-icon input-inline-icon-floating input-clear-btn input-inline-icon--close" type="button" aria-label="Очистить"></button>
+          </label>
+        </div>
+        <div class="arc-modal__slot">
+          <div class="field selector-field" data-selector>
+            <button class="input pseudo-select input-slots" type="button" data-selector-trigger aria-expanded="false">
+              <span class="selector-value slot-value">Value</span>
+              <span class="selector-actions slot-trailing">
+                <span class="selector-clear" aria-hidden="true"></span>
+                <span class="selector-caret" aria-hidden="true"></span>
+              </span>
+            </button>
+            <div class="selector-dropdown" hidden>
+              <div class="input search-field selector-search input-slots">
+                <span class="search-icon slot-leading" aria-hidden="true"></span>
+                <input class="search-inner slot-value" placeholder="Search" />
+              </div>
+              <div class="dropdown-separator"></div>
+              <div class="dropdown-list">
+                <button class="dropdown-row is-checked" type="button"><span>Один</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+                <button class="dropdown-row" type="button"><span>Два</span><span class="dropdown-row-check" aria-hidden="true"></span></button>
+              </div>
+              <div class="dropdown-separator"></div>
+              <button class="btn btn-outline btn-ds selector-reset" type="button">Очистить</button>
+            </div>
+          </div>
+        </div>
+        <div class="arc-modal__slot">
+          <div class="field uploader-live" data-live-uploader data-empty-value="Файл не выбран">
+            <button class="input uploader input-slots" type="button" aria-label="Загрузить файл">
+              <span class="uploader-prepend slot-prepend">Выберите файл</span>
+              <span class="uploader-value slot-value">Файл не выбран</span>
+              <span class="input-inline-icon input-inline-icon--trash uploader-clear slot-trailing" aria-hidden="true"></span>
+            </button>
+            <input class="uploader-file-input" type="file" hidden />
+          </div>
+        </div>
+        <div class="arc-modal__slot">
+          <label class="field"><textarea class="input textarea" placeholder="Многострочный ввод"></textarea></label>
+        </div>
+        <div class="arc-modal__slot">
+          <div class="tabs" role="tablist" aria-label="Tabs в body">
+            <button type="button" class="tab-button is-active">Active Tab</button>
+            <button type="button" class="tab-button">Second tab</button>
+            <button type="button" class="tab-button">Third tab</button>
+          </div>
+        </div>
+        <div class="arc-modal__slot">
+          <hr class="arc-modal__separator" />
+        </div>
+        <div class="arc-modal__slot" data-modal-color-picker>
+          <div class="input color-input input-slots" aria-label="Color value">
+            <span class="color-prepend slot-prepend">HEX</span>
+            <input class="color-value-input slot-value" data-color-value-input value="#EAB308" />
+            <span class="color-swatch-inline slot-trailing" data-color-swatch aria-hidden="true" style="background:#EAB308"></span>
+          </div>
+        </div>
+        <div class="arc-modal__slot">
+          <div class="arc-modal__gradient-track" data-color-hue-track>
+            <span class="arc-modal__gradient-thumb" data-color-hue-thumb></span>
+          </div>
+        </div>
+        <div class="arc-modal__slot">
+          <div class="arc-modal__palette" data-color-tone-track>
+            <span class="arc-modal__palette-thumb" data-color-tone-thumb></span>
+          </div>
+        </div>
+        <div class="arc-modal__slot">
+          <div class="arc-modal__image-placeholder" aria-hidden="true"></div>
+        </div>
+      </div>
+      <footer class="arc-modal__footer arc-modal__footer--actions-2">
+        <button type="button" class="btn btn-outline btn-ds btn-s" data-arc-modal-close><span class="btn-ds__value">Отмена</span></button>
+        <button type="button" class="btn btn-primary btn-ds btn-s" data-arc-modal-save data-arc-modal-close><span class="btn-ds__value">Готово</span><span class="arc-save-dot" data-arc-save-dot hidden aria-hidden="true"></span></button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="arc-modal-host" id="arcModalHostColor" hidden aria-hidden="true">
+    <section
+      class="arc-modal"
+      data-elevation="raised"
+      data-input-size="s"
+      data-btn-size="s"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="arcModalColorTitle"
+    >
+      <header class="arc-modal__header arc-modal__header--title">
+        <h3 class="arc-modal__title" id="arcModalColorTitle">Цвет меток категории</h3>
+        <button type="button" class="arc-modal__close" data-arc-modal-close aria-label="Закрыть">
+          <span class="tab-icon" aria-hidden="true"></span>
+        </button>
+      </header>
+      <div class="arc-modal__body">
+        <div class="arc-modal__slot" data-modal-color-picker data-modal-color-target="main">
+          <div class="input color-input input-slots" aria-label="Color value">
+            <span class="color-prepend slot-prepend">HEX</span>
+            <input class="color-value-input slot-value" data-color-value-input value="#EAB308" />
+            <span class="color-swatch-inline slot-trailing" data-color-swatch aria-hidden="true" style="background:#EAB308"></span>
+          </div>
+        </div>
+        <div class="arc-modal__slot">
+          <div class="arc-modal__gradient-track" data-color-hue-track>
+            <span class="arc-modal__gradient-thumb" data-color-hue-thumb></span>
+          </div>
+        </div>
+        <div class="arc-modal__slot">
+          <div class="arc-modal__palette" data-color-tone-track>
+            <span class="arc-modal__palette-thumb" data-color-tone-thumb></span>
+          </div>
+        </div>
+      </div>
+      <footer class="arc-modal__footer arc-modal__footer--actions-2">
+        <button type="button" class="btn btn-outline btn-ds btn-s" data-arc-modal-close><span class="btn-ds__value">Отмена</span></button>
+        <button type="button" class="btn btn-primary btn-ds btn-s" data-arc-modal-save data-arc-modal-close><span class="btn-ds__value">Сохранить</span><span class="arc-save-dot" data-arc-save-dot hidden aria-hidden="true"></span></button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="arc-modal-host" id="arcModalConfirmHost" hidden aria-hidden="true">
+    <section
+      class="arc-modal"
+      data-elevation="raised"
+      data-input-size="s"
+      data-btn-size="s"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="arcModalConfirmTitle"
+    >
+      <header class="arc-modal__header arc-modal__header--title">
+        <h3 class="arc-modal__title" id="arcModalConfirmTitle">Есть несохранённые изменения</h3>
+      </header>
+      <div class="arc-modal__body">
+        <div class="arc-modal__slot">
+          <p class="arc-modal__slot-text">Сохранить изменения перед закрытием окна?</p>
+        </div>
+      </div>
+      <footer class="arc-modal__footer arc-modal__footer--actions-3">
+        <button type="button" class="btn btn-outline btn-ds btn-s" id="arcModalConfirmStay"><span class="btn-ds__value">Остаться</span></button>
+        <div class="arc-modal__footer-right">
+          <button type="button" class="btn btn-outline btn-ds btn-s" id="arcModalConfirmDiscard"><span class="btn-ds__value">Без сохранения</span></button>
+          <button type="button" class="btn btn-primary btn-ds btn-s" id="arcModalConfirmSave"><span class="btn-ds__value">Сохранить</span></button>
+        </div>
+      </footer>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const body = document.body;
+
+      function injectButtonIcons() {
+        const closeIconMarkup = '<svg class="btn-icon-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5.5 5.5L18.5 18.5M18.5 5.5L5.5 18.5" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        const closeNodes = document.querySelectorAll(".btn-ds__icon, .btn-icon-only__glyph, .tab-icon");
+        closeNodes.forEach(function (node) {
+          if (!node.querySelector("svg")) {
+            node.innerHTML = closeIconMarkup;
+          }
+        });
+      }
+
+      /**
+       * Встроенные копии icons/*.svg: без этого fetch() к локальным файлам часто пустой
+       * (file://, политика браузера), из‑за чего глифы в инпутах не появлялись.
+       */
+      const INPUT_GLYPH_INLINE = {
+        "search_m.svg":
+          '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.8966 10.8816C11.8875 9.8869 12.5 8.51498 12.5 7C12.5 3.96243 10.0376 1.5 7 1.5C3.96243 1.5 1.5 3.96243 1.5 7C1.5 10.0376 3.96243 12.5 7 12.5C8.52258 12.5 9.90066 11.8813 10.8966 10.8816ZM10.8966 10.8816L14.5 14.5" stroke="white" stroke-linecap="round"/></svg>',
+        "search_s.svg":
+          '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_412_2174)"><path d="M8.18809 8.17586C8.99884 7.36201 9.5 6.23953 9.5 5C9.5 2.51472 7.48528 0.5 5 0.5C2.51472 0.5 0.5 2.51472 0.5 5C0.5 7.48528 2.51472 9.5 5 9.5C6.24575 9.5 7.37327 8.9938 8.18809 8.17586ZM8.18809 8.17586L11.5 11.5" stroke="white" stroke-linecap="round"/></g><defs><clipPath id="clip0_412_2174"><rect width="12" height="12" fill="white"/></clipPath></defs></svg>',
+        "close_m.svg":
+          '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 3.5L12.5 12.5M12.5 3.5L3.5 12.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        "close_s.svg":
+          '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 2.5L9.5 9.5M9.5 2.5L2.5 9.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        "chevron_m.svg":
+          '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.5 6L8 10L12.5 6" stroke="white" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        "chevron_s.svg":
+          '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 4.5L6 7.5L9.5 4.5" stroke="white" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        "trash_m.svg":
+          '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_412_160)"><path d="M0 2.5H2.5M16 2.5H13.5M2.5 2.5V13.5C2.5 14.6046 3.39543 15.5 4.5 15.5H11.5C12.6046 15.5 13.5 14.6046 13.5 13.5V2.5M2.5 2.5H13.5M3 0.5H13" stroke="white" stroke-linejoin="round"/></g><defs><clipPath id="clip0_412_160"><rect width="16" height="16" fill="white"/></clipPath></defs></svg>',
+        "trash_s.svg":
+          '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0_412_166)"><path d="M0 2.5L2.5 2.5M12 2.5L9.5 2.5M2.5 2.5L2.5 11.5L9.5 11.5L9.5 2.5M2.5 2.5L9.5 2.5M3 0.5C3.4 0.5 7.16667 0.5 9 0.5" stroke="white" stroke-linejoin="round"/></g><defs><clipPath id="clip0_412_166"><rect width="12" height="12" fill="white"/></clipPath></defs></svg>',
+        "check_m.svg":
+          '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13.5 4.5L5.99935 11.5L2.5 8.5" stroke="white" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        "check_s.svg":
+          '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3.5L4.5 8.5L2.5 6.5" stroke="white" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      };
+
+      const svgTextCache = Object.create(null);
+      let glyphIdSeq = 0;
+
+      function nextGlyphSuffix() {
+        glyphIdSeq += 1;
+        return "i" + glyphIdSeq;
+      }
+
+      function cssUrlValue(raw) {
+        const v = (raw || "").trim();
+        if (!v || v === "none") return "";
+        const i = v.toLowerCase().indexOf("url(");
+        if (i === -1) return "";
+        let rest = v.slice(i + 4).trim();
+        if (rest.charAt(0) === '"' || rest.charAt(0) === "'") {
+          const q = rest.charAt(0);
+          const end = rest.indexOf(q, 1);
+          if (end === -1) return "";
+          return rest.slice(1, end).trim();
+        }
+        const endParen = rest.indexOf(")");
+        return (endParen === -1 ? rest
+          : rest.slice(0, endParen)).trim();
+      }
+
+      function glyphFileKey(href) {
+        const s = (href || "").replace(/^\.\//, "").replace(/\\/g, "/");
+        const parts = s.split("/");
+        let name = parts[parts.length - 1] || s;
+        const q = name.indexOf("?");
+        if (q !== -1) name = name.slice(0, q);
+        return name;
+      }
+
+      function uniquifySvgText(text, sfx) {
+        return text
+          .replace(/id="([^"]+)"/g, function (_, id) {
+            return 'id="' + id + "-" + sfx + '"';
+          })
+          .replace(/url\(#([^)]+)\)/g, function (_, ref) {
+            return "url(#" + ref + "-" + sfx + ")";
+          });
+      }
+
+      function fetchSvgText(absHref) {
+        if (svgTextCache[absHref]) return Promise.resolve(svgTextCache[absHref]);
+        return fetch(absHref)
+          .then(function (r) {
+            if (!r.ok) throw new Error(String(r.status));
+            return r.text();
+          })
+          .then(function (t) {
+            svgTextCache[absHref] = t;
+            return t;
+          });
+      }
+
+      function getSvgText(href) {
+        const key = glyphFileKey(href);
+        const embedded = INPUT_GLYPH_INLINE[key];
+        if (embedded) return Promise.resolve(embedded);
+        try {
+          const abs = new URL(href, document.baseURI).href;
+          return fetchSvgText(abs);
+        } catch (e) {
+          return Promise.reject(e);
+        }
+      }
+
+      function injectSvgFromComputedVar(el, varName) {
+        const rawFromEl = getComputedStyle(el).getPropertyValue(varName).trim();
+        const rawFromBody = getComputedStyle(document.body).getPropertyValue(varName).trim();
+        const href = cssUrlValue(rawFromEl || rawFromBody);
+        if (!href) return Promise.resolve();
+        return getSvgText(href).then(function (text) {
+          const cleaned = text.replace(/<\?xml[^?]*\?>/, "").trim();
+          const unique = uniquifySvgText(cleaned, nextGlyphSuffix());
+          const wrap = document.createElement("div");
+          wrap.innerHTML = unique;
+          const svg = wrap.querySelector("svg");
+          if (!svg) return;
+          svg.setAttribute("class", "btn-icon-svg");
+          svg.setAttribute("aria-hidden", "true");
+          svg.removeAttribute("width");
+          svg.removeAttribute("height");
+          el.textContent = "";
+          el.appendChild(svg);
+        });
+      }
+
+      function hydrateInputGlyphs() {
+        const tasks = [];
+        document.querySelectorAll(".search-icon").forEach(function (el) {
+          tasks.push(injectSvgFromComputedVar(el, "--input-icon-search-url"));
+        });
+        document.querySelectorAll(".selector-caret").forEach(function (el) {
+          tasks.push(injectSvgFromComputedVar(el, "--input-icon-chevron-url"));
+        });
+        document.querySelectorAll(".selector-clear").forEach(function (el) {
+          tasks.push(injectSvgFromComputedVar(el, "--input-icon-close-url"));
+        });
+        document.querySelectorAll(".input-inline-icon--close").forEach(function (el) {
+          tasks.push(injectSvgFromComputedVar(el, "--input-icon-close-url"));
+        });
+        document.querySelectorAll(".input-inline-icon--trash").forEach(function (el) {
+          tasks.push(injectSvgFromComputedVar(el, "--input-icon-trash-url"));
+        });
+        document.querySelectorAll(".dropdown-row-check").forEach(function (el) {
+          tasks.push(injectSvgFromComputedVar(el, "--input-icon-check-url"));
+        });
+        return Promise.all(tasks);
+      }
+
+      function initArcModals() {
+        const hosts = Array.from(document.querySelectorAll(".arc-modal-host"));
+        let activeHost = null;
+        let lastTrigger = null;
+        const modalCommittedState = new Map();
+        const confirmHost = document.getElementById("arcModalConfirmHost");
+        const confirmStayBtn = document.getElementById("arcModalConfirmStay");
+        const confirmDiscardBtn = document.getElementById("arcModalConfirmDiscard");
+        const confirmSaveBtn = document.getElementById("arcModalConfirmSave");
+        let pendingCloseHost = null;
+        let pendingCloseTrigger = null;
+
+        function getFocusable(root) {
+          return Array.from(
+            root.querySelectorAll(
+              'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )
+          ).filter(function (el) {
+            return !el.closest("[hidden]");
+          });
+        }
+
+        function captureModalState(host) {
+          const state = {
+            controls: [],
+            selectors: [],
+            tabs: [],
+            uploaders: []
+          };
+
+          const controls = Array.from(host.querySelectorAll("input, textarea"));
+          controls.forEach(function (control, idx) {
+            state.controls.push({
+              idx: idx,
+              value: control.value || ""
+            });
+          });
+
+          const selectors = Array.from(host.querySelectorAll("[data-selector]"));
+          selectors.forEach(function (field, idx) {
+            const valueNode = field.querySelector(".selector-value");
+            const rows = Array.from(field.querySelectorAll(".dropdown-row"));
+            let checkedIndex = -1;
+            rows.forEach(function (row, rowIdx) {
+              if (row.classList.contains("is-checked")) checkedIndex = rowIdx;
+            });
+            state.selectors.push({
+              idx: idx,
+              value: valueNode ? (valueNode.textContent || "") : "",
+              hasValue: field.classList.contains("has-value"),
+              checkedIndex: checkedIndex
+            });
+          });
+
+          const tabLists = Array.from(host.querySelectorAll(".arc-modal .tabs"));
+          tabLists.forEach(function (tabList, idx) {
+            const buttons = Array.from(tabList.querySelectorAll(".tab-button"));
+            let active = 0;
+            buttons.forEach(function (button, buttonIdx) {
+              if (button.classList.contains("is-active")) active = buttonIdx;
+            });
+            state.tabs.push({ idx: idx, active: active });
+          });
+
+          const uploaders = Array.from(host.querySelectorAll("[data-live-uploader]"));
+          uploaders.forEach(function (field, idx) {
+            const valueNode = field.querySelector(".uploader-value");
+            const fullValue = valueNode && valueNode.dataset ? (valueNode.dataset.fullValue || "") : "";
+            state.uploaders.push({
+              idx: idx,
+              fullValue: fullValue,
+              text: valueNode ? (valueNode.textContent || "") : "",
+              hasFile: field.classList.contains("has-file")
+            });
+          });
+
+          return state;
+        }
+
+        function applyModalState(host, state) {
+          if (!state) return;
+
+          const controls = Array.from(host.querySelectorAll("input, textarea"));
+          state.controls.forEach(function (entry) {
+            const control = controls[entry.idx];
+            if (!control) return;
+            control.value = entry.value;
+            control.dispatchEvent(new Event("input", { bubbles: true }));
+          });
+
+          const selectors = Array.from(host.querySelectorAll("[data-selector]"));
+          state.selectors.forEach(function (entry) {
+            const field = selectors[entry.idx];
+            if (!field) return;
+            const valueNode = field.querySelector(".selector-value");
+            const rows = Array.from(field.querySelectorAll(".dropdown-row"));
+            if (valueNode) valueNode.textContent = entry.value;
+            field.classList.toggle("has-value", !!entry.hasValue);
+            rows.forEach(function (row, rowIdx) {
+              row.classList.toggle("is-checked", rowIdx === entry.checkedIndex);
+              row.hidden = false;
+            });
+            const trigger = field.querySelector("[data-selector-trigger]");
+            const dropdown = field.querySelector(".selector-dropdown");
+            if (trigger) trigger.setAttribute("aria-expanded", "false");
+            if (dropdown) dropdown.hidden = true;
+            const search = field.querySelector(".selector-search .search-inner");
+            if (search) search.value = "";
+          });
+
+          const tabLists = Array.from(host.querySelectorAll(".arc-modal .tabs"));
+          state.tabs.forEach(function (entry) {
+            const tabList = tabLists[entry.idx];
+            if (!tabList) return;
+            const buttons = Array.from(tabList.querySelectorAll(".tab-button"));
+            buttons.forEach(function (button, buttonIdx) {
+              const active = buttonIdx === entry.active;
+              button.classList.toggle("is-active", active);
+              if (button.hasAttribute("aria-selected")) {
+                button.setAttribute("aria-selected", active ? "true" : "false");
+              }
+            });
+          });
+
+          const uploaders = Array.from(host.querySelectorAll("[data-live-uploader]"));
+          state.uploaders.forEach(function (entry) {
+            const field = uploaders[entry.idx];
+            if (!field) return;
+            const valueNode = field.querySelector(".uploader-value");
+            if (!valueNode) return;
+            if (entry.fullValue) valueNode.dataset.fullValue = entry.fullValue;
+            else delete valueNode.dataset.fullValue;
+            valueNode.textContent = entry.text;
+            field.classList.toggle("has-file", !!entry.hasFile);
+          });
+        }
+
+        function isModalDirty(host) {
+          if (!host) return false;
+          const committed = modalCommittedState.get(host.id);
+          if (!committed) return false;
+          try {
+            return JSON.stringify(captureModalState(host)) !== JSON.stringify(committed);
+          } catch (e) {
+            return false;
+          }
+        }
+
+        function syncDirtyIndicator(host) {
+          if (!host) return;
+          const dirty = isModalDirty(host);
+          host.querySelectorAll("[data-arc-save-dot]").forEach(function (node) {
+            node.hidden = !dirty;
+          });
+        }
+
+        function showUnsavedConfirm(host, trigger) {
+          if (!confirmHost) return false;
+          pendingCloseHost = host || null;
+          pendingCloseTrigger = trigger || null;
+          confirmHost.hidden = false;
+          confirmHost.setAttribute("aria-hidden", "false");
+          if (confirmStayBtn) confirmStayBtn.focus();
+          return true;
+        }
+
+        function hideUnsavedConfirm() {
+          if (!confirmHost) return;
+          confirmHost.hidden = true;
+          confirmHost.setAttribute("aria-hidden", "true");
+          pendingCloseHost = null;
+          pendingCloseTrigger = null;
+        }
+
+        function openArcModal(hostId, trigger) {
+          const host = document.getElementById(hostId);
+          if (!host) return;
+          hosts.forEach(function (h) {
+            h.hidden = true;
+            h.setAttribute("aria-hidden", "true");
+          });
+          host.hidden = false;
+          host.setAttribute("aria-hidden", "false");
+          activeHost = host;
+          lastTrigger = trigger || null;
+          if (!modalCommittedState.has(hostId)) {
+            modalCommittedState.set(hostId, captureModalState(host));
+          }
+          applyModalState(host, modalCommittedState.get(hostId));
+          syncDirtyIndicator(host);
+          document.dispatchEvent(new CustomEvent("arc-modal:open", { detail: { host: host, trigger: trigger || null } }));
+          const dialog = host.querySelector(".arc-modal");
+          const focusables = dialog ? getFocusable(dialog) : [];
+          if (focusables.length) {
+            focusables[0].focus();
+          }
+          hydrateInputGlyphs().catch(function (err) {
+            if (typeof console !== "undefined" && console.warn) {
+              console.warn("[arc-2-ui] hydrateInputGlyphs:", err);
+            }
+          });
+        }
+
+        function closeArcModal(closingHost, triggerOverride) {
+          if (!closingHost) return;
+          const saved = closingHost.getAttribute("data-arc-modal-saved") === "true";
+          closingHost.removeAttribute("data-arc-modal-saved");
+          closingHost.hidden = true;
+          closingHost.setAttribute("aria-hidden", "true");
+          const t = triggerOverride || lastTrigger;
+          document.dispatchEvent(new CustomEvent("arc-modal:close", { detail: { host: closingHost, trigger: t || null, saved: saved } }));
+          activeHost = null;
+          lastTrigger = null;
+          if (t && typeof t.focus === "function") {
+            t.focus();
+          }
+        }
+
+        document.querySelectorAll("[data-arc-modal-open]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            const id = btn.getAttribute("data-arc-modal-open");
+            if (id) openArcModal(id, btn);
+          });
+        });
+
+        document.querySelectorAll("[data-arc-modal-close]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            const host = btn.closest(".arc-modal-host");
+            const isSave = btn.hasAttribute("data-arc-modal-save");
+            const isCancel = btn.closest(".arc-modal__footer") && !isSave;
+            if (!host) return;
+            if (!isSave && !isCancel && isModalDirty(host)) {
+              if (showUnsavedConfirm(host, lastTrigger)) return;
+            }
+            if (host) {
+              if (isSave) {
+                modalCommittedState.set(host.id, captureModalState(host));
+                host.setAttribute("data-arc-modal-saved", "true");
+              } else {
+                applyModalState(host, modalCommittedState.get(host.id));
+                host.setAttribute("data-arc-modal-saved", "false");
+              }
+              syncDirtyIndicator(host);
+            }
+            closeArcModal(host, lastTrigger);
+          });
+        });
+
+        hosts.forEach(function (host) {
+          host.addEventListener("input", function () {
+            syncDirtyIndicator(host);
+          });
+          host.addEventListener("change", function () {
+            syncDirtyIndicator(host);
+          });
+          host.addEventListener("click", function () {
+            requestAnimationFrame(function () {
+              syncDirtyIndicator(host);
+            });
+          });
+        });
+
+        if (confirmStayBtn) {
+          confirmStayBtn.addEventListener("click", function () {
+            const hostToFocus = pendingCloseHost && pendingCloseHost.querySelector(".arc-modal");
+            hideUnsavedConfirm();
+            if (hostToFocus) {
+              const focusables = getFocusable(hostToFocus);
+              if (focusables.length) focusables[0].focus();
+            }
+          });
+        }
+
+        if (confirmDiscardBtn) {
+          confirmDiscardBtn.addEventListener("click", function () {
+            if (!pendingCloseHost) {
+              hideUnsavedConfirm();
+              return;
+            }
+            applyModalState(pendingCloseHost, modalCommittedState.get(pendingCloseHost.id));
+            pendingCloseHost.setAttribute("data-arc-modal-saved", "false");
+            const host = pendingCloseHost;
+            const trigger = pendingCloseTrigger;
+            hideUnsavedConfirm();
+            closeArcModal(host, trigger);
+          });
+        }
+
+        if (confirmSaveBtn) {
+          confirmSaveBtn.addEventListener("click", function () {
+            if (!pendingCloseHost) {
+              hideUnsavedConfirm();
+              return;
+            }
+            modalCommittedState.set(pendingCloseHost.id, captureModalState(pendingCloseHost));
+            pendingCloseHost.setAttribute("data-arc-modal-saved", "true");
+            const host = pendingCloseHost;
+            const trigger = pendingCloseTrigger;
+            hideUnsavedConfirm();
+            closeArcModal(host, trigger);
+          });
+        }
+
+        document.addEventListener("keydown", function (event) {
+          if (event.key !== "Escape") return;
+          if (confirmHost && !confirmHost.hidden) {
+            event.preventDefault();
+            hideUnsavedConfirm();
+            return;
+          }
+          const dialog = activeHost && activeHost.querySelector(".arc-modal");
+          if (dialog && dialog.contains(document.activeElement)) {
+            event.preventDefault();
+            if (isModalDirty(activeHost)) {
+              showUnsavedConfirm(activeHost, lastTrigger);
+            } else {
+              closeArcModal(activeHost, lastTrigger);
+            }
+            return;
+          }
+          closeSelectors();
+        });
+
+        document.querySelectorAll(".arc-modal .tabs").forEach(function (tabList) {
+          const tabButtons = Array.from(tabList.querySelectorAll(".tab-button"));
+          tabButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+              tabButtons.forEach(function (b) {
+                b.classList.toggle("is-active", b === button);
+              });
+            });
+          });
+        });
+      }
+
+      function initModalColorPickers() {
+        const pickers = Array.from(document.querySelectorAll("[data-modal-color-picker]"));
+        if (!pickers.length) return;
+
+        function hsvToHex(h, s, v) {
+          const sat = s / 100;
+          const val = v / 100;
+          const c = val * sat;
+          const hh = h / 60;
+          const x = c * (1 - Math.abs((hh % 2) - 1));
+          let r = 0;
+          let g = 0;
+          let b = 0;
+          if (hh >= 0 && hh < 1) { r = c; g = x; b = 0; }
+          else if (hh < 2) { r = x; g = c; b = 0; }
+          else if (hh < 3) { r = 0; g = c; b = x; }
+          else if (hh < 4) { r = 0; g = x; b = c; }
+          else if (hh < 5) { r = x; g = 0; b = c; }
+          else { r = c; g = 0; b = x; }
+          const m = val - c;
+          const rr = Math.round((r + m) * 255);
+          const gg = Math.round((g + m) * 255);
+          const bb = Math.round((b + m) * 255);
+          return "#" + [rr, gg, bb].map(function (n) {
+            return n.toString(16).padStart(2, "0");
+          }).join("").toUpperCase();
+        }
+
+        function clamp(num, min, max) {
+          return Math.min(max, Math.max(min, num));
+        }
+
+        function hexToHsv(hex) {
+          const raw = (hex || "").trim().replace(/^#/, "");
+          if (!/^[0-9a-fA-F]{6}$/.test(raw)) return null;
+          const r = parseInt(raw.slice(0, 2), 16) / 255;
+          const g = parseInt(raw.slice(2, 4), 16) / 255;
+          const b = parseInt(raw.slice(4, 6), 16) / 255;
+          const max = Math.max(r, g, b);
+          const min = Math.min(r, g, b);
+          const d = max - min;
+          let h = 0;
+          if (d !== 0) {
+            if (max === r) h = ((g - b) / d) % 6;
+            else if (max === g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+          }
+          h = Math.round(h * 60);
+          if (h < 0) h += 360;
+          const s = max === 0 ? 0 : d / max;
+          const v = max;
+          return { h: h, s: Math.round(s * 100), v: Math.round(v * 100) };
+        }
+
+        const pickerStateMap = new Map();
+        pickers.forEach(function (picker) {
+          const dialog = picker.closest(".arc-modal");
+          if (!dialog) return;
+          const hueTrack = dialog.querySelector("[data-color-hue-track]");
+          const hueThumb = dialog.querySelector("[data-color-hue-thumb]");
+          const toneTrack = dialog.querySelector("[data-color-tone-track]");
+          const toneThumb = dialog.querySelector("[data-color-tone-thumb]");
+          const valueInput = picker.querySelector("[data-color-value-input]");
+          const swatchNode = picker.querySelector("[data-color-swatch]");
+          if (!hueTrack || !hueThumb || !toneTrack || !toneThumb || !valueInput || !swatchNode) return;
+
+          let hue = 45;
+          let saturation = 95;
+          let brightness = 92;
+          let latestHex = "#EAB308";
+
+          function render() {
+            const hex = hsvToHex(hue, saturation, brightness);
+            latestHex = hex;
+            valueInput.value = hex;
+            swatchNode.style.background = hex;
+            toneTrack.style.background =
+              "linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, #000000 100%), " +
+              "linear-gradient(90deg, #ffffff 0%, hsl(" + Math.round(hue) + " 100% 50%) 100%)";
+            const hueInset = 2;
+            const hueThumbSize = 12;
+            const hueTravel = Math.max(0, hueTrack.clientWidth - hueThumbSize - hueInset * 2);
+            hueThumb.style.left = (hueInset + (hue / 360) * hueTravel) + "px";
+            toneThumb.style.left = saturation + "%";
+            toneThumb.style.top = (100 - brightness) + "%";
+          }
+
+          function setFromHex(hex) {
+            const parsed = hexToHsv(hex);
+            if (!parsed) return;
+            hue = parsed.h;
+            saturation = parsed.s;
+            brightness = parsed.v;
+            render();
+          }
+
+          function bindDrag(track, onMove) {
+            track.addEventListener("pointerdown", function (event) {
+              event.preventDefault();
+              function move(e) {
+                const rect = track.getBoundingClientRect();
+                onMove(e, rect);
+              }
+              function up() {
+                document.removeEventListener("pointermove", move);
+                document.removeEventListener("pointerup", up);
+              }
+              move(event);
+              document.addEventListener("pointermove", move);
+              document.addEventListener("pointerup", up);
+            });
+          }
+
+          bindDrag(hueTrack, function (event, rect) {
+            const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+            hue = x * 360;
+            render();
+          });
+
+          bindDrag(toneTrack, function (event, rect) {
+            const x = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+            const y = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+            saturation = Math.round(x * 100);
+            brightness = Math.round((1 - y) * 100);
+            render();
+          });
+
+          valueInput.addEventListener("input", function () {
+            const parsed = hexToHsv(valueInput.value);
+            if (!parsed) return;
+            hue = parsed.h;
+            saturation = parsed.s;
+            brightness = parsed.v;
+            render();
+          });
+
+          render();
+          pickerStateMap.set(picker, {
+            picker: picker,
+            dialog: dialog,
+            setFromHex: setFromHex,
+            getHex: function () { return latestHex; }
+          });
+        });
+
+        const mainInput = document.querySelector("[data-main-color-input]");
+        const mainSwatch = document.querySelector("[data-main-color-swatch]");
+        const colorModalHost = document.getElementById("arcModalHostColor");
+        if (!mainInput || !mainSwatch || !colorModalHost) return;
+
+        const colorModalPicker = Array.from(pickerStateMap.values()).find(function (state) {
+          return state.picker.getAttribute("data-modal-color-target") === "main";
+        });
+        if (!colorModalPicker) return;
+
+        function normalizeHex(value) {
+          const parsed = hexToHsv(value);
+          if (!parsed) return null;
+          return hsvToHex(parsed.h, parsed.s, parsed.v);
+        }
+
+        function applyMainColor(hex) {
+          mainInput.value = hex;
+          mainSwatch.style.background = hex;
+        }
+
+        let committedHex = normalizeHex(mainInput.value) || "#EAB308";
+        let draftHex = committedHex;
+        applyMainColor(committedHex);
+        colorModalPicker.setFromHex(committedHex);
+
+        mainInput.addEventListener("input", function () {
+          const next = normalizeHex(mainInput.value);
+          if (!next) return;
+          committedHex = next;
+          draftHex = next;
+          applyMainColor(next);
+          colorModalPicker.setFromHex(next);
+        });
+
+        colorModalPicker.picker.querySelector("[data-color-value-input]").addEventListener("input", function () {
+          draftHex = colorModalPicker.getHex();
+        });
+
+        document.addEventListener("arc-modal:open", function (event) {
+          const host = event.detail && event.detail.host;
+          if (!host || host.id !== "arcModalHostColor") return;
+          draftHex = committedHex;
+          colorModalPicker.setFromHex(committedHex);
+        });
+
+        document.addEventListener("arc-modal:close", function (event) {
+          const host = event.detail && event.detail.host;
+          if (!host || host.id !== "arcModalHostColor") return;
+          if (event.detail && event.detail.saved) {
+            draftHex = colorModalPicker.getHex();
+            committedHex = draftHex;
+            applyMainColor(committedHex);
+          } else {
+            colorModalPicker.setFromHex(committedHex);
+            applyMainColor(committedHex);
+          }
+        });
+      }
+
+      function initDemoAlerts() {
+        const host = document.getElementById("demoAlertHost");
+        const buttons = Array.from(document.querySelectorAll("[data-demo-alert]"));
+        if (!host || !buttons.length) return;
+
+        const alertCopy = {
+          success: "Операция успешно завершена",
+          info: "Изменения применяются, это может занять несколько секунд",
+          warning: "Не все данные заполнены, проверьте обязательные поля",
+          danger: "Не удалось завершить операцию, попробуйте снова"
+        };
+
+        let closeTimer = null;
+
+        function closeAlert() {
+          if (closeTimer) {
+            clearTimeout(closeTimer);
+            closeTimer = null;
+          }
+          host.innerHTML = "";
+        }
+
+        const demoAlertCloseSvg =
+          '<svg class="demo-alert__close-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+          '<path d="M5.5 5.5L18.5 18.5M18.5 5.5L5.5 18.5" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>' +
+          "</svg>";
+
+        function showAlert(type) {
+          const kind = type || "info";
+          const message = alertCopy[kind] || alertCopy.info;
+          closeAlert();
+          const alertNode = document.createElement("div");
+          alertNode.className = "alert alert-" + kind;
+          alertNode.setAttribute("role", "status");
+          alertNode.innerHTML =
+            '<p class="demo-alert__message"></p>' +
+            '<button type="button" class="demo-alert__close" aria-label="Закрыть уведомление">' +
+            demoAlertCloseSvg +
+            "</button>";
+          const messageNode = alertNode.querySelector(".demo-alert__message");
+          const closeNode = alertNode.querySelector(".demo-alert__close");
+          if (messageNode) messageNode.textContent = message;
+          alertNode.addEventListener("click", function () {
+            closeAlert();
+          });
+          if (closeNode) {
+            closeNode.addEventListener("click", function () {
+              closeAlert();
+            });
+          }
+          host.appendChild(alertNode);
+          closeTimer = window.setTimeout(closeAlert, 3200);
+        }
+
+        buttons.forEach(function (button) {
+          button.addEventListener("click", function () {
+            showAlert(button.getAttribute("data-demo-alert"));
+          });
+        });
+      }
+
+      function setActive(buttons, activeButton) {
+        buttons.forEach(function (button) {
+          button.classList.toggle("is-active", button === activeButton);
+        });
+      }
+
+      const elevationTabs = Array.from(document.querySelectorAll("[data-elevation-tab]"));
+      elevationTabs.forEach(function (button) {
+        button.addEventListener("click", function () {
+          body.setAttribute("data-elevation", button.getAttribute("data-elevation-tab"));
+          setActive(elevationTabs, button);
+        });
+      });
+
+      const sizeTabs = Array.from(document.querySelectorAll("[data-size-tab]"));
+      sizeTabs.forEach(function (button) {
+        button.addEventListener("click", function () {
+          const size = button.getAttribute("data-size-tab");
+          body.setAttribute("data-btn-size", size);
+          body.setAttribute("data-input-size", size);
+          setActive(sizeTabs, button);
+          hydrateInputGlyphs().catch(function (err) {
+            if (typeof console !== "undefined" && console.warn) {
+              console.warn("[arc-2-ui] hydrateInputGlyphs:", err);
+            }
+          });
+        });
+      });
+
+      const groupButtons = Array.from(document.querySelectorAll(".btn-group-ds .btn"));
+      groupButtons.forEach(function (button) {
+        button.addEventListener("mousedown", function (event) {
+          event.preventDefault();
+        });
+      });
+
+      const tags = Array.from(document.querySelectorAll("[data-tag-toggle]"));
+      tags.forEach(function (tag) {
+        tag.addEventListener("click", function () {
+          tag.classList.toggle("chip-active");
+        });
+      });
+
+      const demoTabLists = Array.from(document.querySelectorAll('.tabs[aria-label="Tabs default"]'));
+      demoTabLists.forEach(function (tabList) {
+        const tabButtons = Array.from(tabList.querySelectorAll(".tab-button"));
+        tabButtons.forEach(function (button) {
+          button.addEventListener("click", function () {
+            setActive(tabButtons, button);
+          });
+        });
+      });
+
+      const selectorFields = Array.from(document.querySelectorAll("[data-selector]"));
+      function closeSelectors() {
+        selectorFields.forEach(function (field) {
+          const dropdown = field.querySelector(".selector-dropdown");
+          const trigger = field.querySelector("[data-selector-trigger]");
+          if (dropdown) dropdown.hidden = true;
+          if (trigger) trigger.setAttribute("aria-expanded", "false");
+        });
+      }
+
+      selectorFields.forEach(function (field) {
+        const trigger = field.querySelector("[data-selector-trigger]");
+        const dropdown = field.querySelector(".selector-dropdown");
+        const valueNode = field.querySelector(".selector-value");
+        const clearNode = field.querySelector(".selector-clear");
+        const searchInput = field.querySelector(".selector-search .search-inner");
+        if (!trigger || !dropdown || !valueNode) return;
+
+        function applyRowFilter() {
+          const rows = Array.from(field.querySelectorAll(".dropdown-row"));
+          const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+          rows.forEach(function (row) {
+            const labelNode = row.querySelector("span");
+            const label = labelNode ? labelNode.textContent : row.textContent;
+            const normalized = (label || "").trim().toLowerCase();
+            row.hidden = query.length > 0 && normalized.indexOf(query) === -1;
+          });
+        }
+
+        trigger.addEventListener("click", function (event) {
+          if (clearNode && (event.target === clearNode || clearNode.contains(event.target))) {
+            valueNode.textContent = "Выберите значение";
+            field.classList.remove("has-value");
+            closeSelectors();
+            trigger.focus();
+            return;
+          }
+          event.stopPropagation();
+          const willOpen = dropdown.hidden;
+          closeSelectors();
+          dropdown.hidden = !willOpen;
+          trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+        });
+
+        dropdown.addEventListener("click", function (event) {
+          event.stopPropagation();
+        });
+
+        if (searchInput) {
+          searchInput.addEventListener("click", function (event) {
+            event.stopPropagation();
+          });
+          searchInput.addEventListener("input", function () {
+            applyRowFilter();
+          });
+          searchInput.addEventListener("keydown", function (event) {
+            event.stopPropagation();
+          });
+        }
+
+        const rows = Array.from(field.querySelectorAll(".dropdown-row"));
+        rows.forEach(function (row) {
+          row.addEventListener("click", function () {
+            rows.forEach(function (r) {
+              r.classList.remove("is-checked");
+            });
+            row.classList.add("is-checked");
+            valueNode.textContent = row.textContent ? row.textContent.trim() : "";
+            field.classList.add("has-value");
+            closeSelectors();
+            trigger.focus();
+          });
+        });
+
+        const resetBtn = field.querySelector(".selector-reset");
+        if (resetBtn) {
+          resetBtn.addEventListener("click", function () {
+            rows.forEach(function (row) {
+              row.classList.remove("is-checked");
+              row.hidden = false;
+            });
+            valueNode.textContent = "Выберите значение";
+            field.classList.remove("has-value");
+            if (searchInput) searchInput.value = "";
+            closeSelectors();
+            trigger.focus();
+          });
+        }
+
+        applyRowFilter();
+      });
+
+      document.addEventListener("click", function () {
+        closeSelectors();
+      });
+
+      const liveInputs = Array.from(document.querySelectorAll("[data-live-input]"));
+      liveInputs.forEach(function (field) {
+        const input = field.querySelector("input.input");
+        const clearBtn = field.querySelector(".input-clear-btn");
+        if (!input || !clearBtn) return;
+
+        function syncInputState() {
+          field.classList.toggle("has-value", input.value.length > 0);
+        }
+
+        input.addEventListener("input", syncInputState);
+        clearBtn.addEventListener("click", function () {
+          input.value = "";
+          syncInputState();
+          input.focus();
+        });
+
+        syncInputState();
+      });
+
+      const liveSearchInputs = Array.from(document.querySelectorAll("[data-live-search]"));
+      liveSearchInputs.forEach(function (field) {
+        const input = field.querySelector(".search-inner");
+        const clearBtn = field.querySelector(".search-clear-btn");
+        if (!input || !clearBtn) return;
+
+        function syncSearchState() {
+          field.classList.toggle("has-value", input.value.length > 0);
+        }
+
+        input.addEventListener("input", syncSearchState);
+        clearBtn.addEventListener("click", function () {
+          input.value = "";
+          syncSearchState();
+          input.focus();
+        });
+
+        syncSearchState();
+      });
+
+      const liveSearchMultiselectFields = Array.from(document.querySelectorAll("[data-live-search-multi]"));
+      liveSearchMultiselectFields.forEach(function (field) {
+        const input = field.querySelector(".search-multiselect .search-inner");
+        const clearBtn = field.querySelector(".search-multiselect-clear-btn");
+        if (!input || !clearBtn) return;
+
+        function syncMultiSearchState() {
+          field.classList.toggle("has-value", input.value.length > 0);
+        }
+
+        input.addEventListener("input", syncMultiSearchState);
+        clearBtn.addEventListener("click", function () {
+          input.value = "";
+          syncMultiSearchState();
+          input.focus();
+        });
+
+        syncMultiSearchState();
+      });
+
+      const liveUploaderFields = Array.from(document.querySelectorAll("[data-live-uploader]"));
+      liveUploaderFields.forEach(function (field) {
+        const trigger = field.querySelector(".uploader");
+        const valueNode = field.querySelector(".uploader-value");
+        const clearNode = field.querySelector(".uploader-clear");
+        const fileInput = field.querySelector(".uploader-file-input");
+        const emptyValue = field.getAttribute("data-empty-value") || "Файл не выбран";
+        if (!trigger || !valueNode || !fileInput) return;
+
+        const initialValue = (valueNode.textContent || "").trim();
+        if (initialValue && initialValue !== emptyValue) {
+          valueNode.dataset.fullValue = initialValue;
+        }
+
+        function renderUploaderValue() {
+          const fullValue = valueNode.dataset.fullValue || "";
+          if (!fullValue) {
+            valueNode.textContent = emptyValue;
+            return;
+          }
+          valueNode.textContent = fullValue;
+          if (valueNode.scrollWidth <= valueNode.clientWidth) return;
+          const lastDot = fullValue.lastIndexOf(".");
+          const hasExt = lastDot > 0 && lastDot < fullValue.length - 1;
+          if (hasExt) {
+            const base = fullValue.slice(0, lastDot);
+            const ext = fullValue.slice(lastDot + 1);
+            let head = base;
+            while (head.length > 1) {
+              valueNode.textContent = head + "..." + ext;
+              if (valueNode.scrollWidth <= valueNode.clientWidth) return;
+              head = head.slice(0, -1);
+            }
+            valueNode.textContent = "..." + ext;
+            return;
+          }
+          let head = fullValue;
+          while (head.length > 1) {
+            head = head.slice(0, -1);
+            valueNode.textContent = head + "...";
+            if (valueNode.scrollWidth <= valueNode.clientWidth) return;
+          }
+        }
+
+        function syncUploaderState() {
+          const hasFile = Boolean(valueNode.dataset.fullValue);
+          field.classList.toggle("has-file", Boolean(hasFile));
+          renderUploaderValue();
+        }
+
+        trigger.addEventListener("click", function (event) {
+          if (trigger.disabled) return;
+          if (clearNode && (event.target === clearNode || clearNode.contains(event.target))) {
+            fileInput.value = "";
+            delete valueNode.dataset.fullValue;
+            syncUploaderState();
+            return;
+          }
+          fileInput.click();
+        });
+
+        fileInput.addEventListener("change", function () {
+          const file = fileInput.files && fileInput.files[0];
+          if (file) {
+            valueNode.dataset.fullValue = file.name;
+          } else {
+            delete valueNode.dataset.fullValue;
+          }
+          syncUploaderState();
+        });
+
+        window.addEventListener("resize", function () {
+          renderUploaderValue();
+        });
+
+        syncUploaderState();
+      });
+
+      initArcModals();
+      initModalColorPickers();
+      initDemoAlerts();
+
+      injectButtonIcons();
+      hydrateInputGlyphs().catch(function (err) {
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn("[arc-2-ui] hydrateInputGlyphs:", err);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
