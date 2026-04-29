@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARC-2 Navbar Sandbox</title>
+  <link rel="stylesheet" href="./arc-2-ui/arc-2-ui.css" />
+  <link rel="stylesheet" href="./arc-2-navbar.css" />
+</head>
+<body class="arc2-navbar-page" data-elevation="default" data-typo-role="primary" data-typo-tone="white" data-typo-state="default" data-btn-size="l" data-input-size="l">
+  <main class="arc2-navbar-shell">
+    <header class="arc2-navbar panel elevation-default" data-navbar-elevation="default">
+      <div class="arc2-navbar-row">
+        <div class="arc2-navbar-group">
+          <div class="tabs arc2-navbar-main-tabs" role="tablist" aria-label="Основная навигация">
+            <button class="tab-button is-active" data-section="gallery" type="button" role="tab" aria-selected="true">Галерея</button>
+            <button class="tab-button" data-section="tags" type="button" role="tab" aria-selected="false">Метки</button>
+            <button class="tab-button" data-section="collections" type="button" role="tab" aria-selected="false">Коллекции</button>
+            <button class="tab-button" data-section="moodboard" type="button" role="tab" aria-selected="false">Мудборд</button>
+            <button class="tab-button" data-section="settings" type="button" role="tab" aria-selected="false">Настройки</button>
+            <button class="tab-button" data-section="uiKit" type="button" role="tab" aria-selected="false">UI-Kit</button>
+          </div>
+        </div>
+
+        <div class="arc2-navbar-group arc2-navbar-group--grow">
+          <div class="field field-full search-multiselect-live arc2-navbar-search-live" data-live-search-multi>
+            <div class="input search-multiselect input--size-l input-slots arc2-navbar-search">
+              <span class="search-icon slot-leading arc2-icon-search" aria-hidden="true"></span>
+              <input class="search-inner slot-value" type="text" placeholder="Поиск по названиям меток или ID карточек..." />
+              <button class="input-inline-icon search-multiselect-clear-btn input-inline-icon--close slot-trailing arc2-icon-close" type="button" aria-label="Очистить"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="arc2-navbar-group">
+          <button class="btn btn-primary btn-ds arc2-navbar-add" type="button" id="arc2NavbarAddTrigger">
+            <span class="btn-ds__value">Добавить карточки</span>
+            <span class="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="arc2-navbar-row">
+        <h1 class="h1 arc2-navbar-title" id="arc2NavbarTitle">Карточки</h1>
+        <div class="arc2-navbar-secondary-actions" id="arc2NavbarSecondaryActions"></div>
+      </div>
+    </header>
+    <section class="arc2-content-section arc2-content-section--hidden" id="arc2UiKitSection">
+      <iframe class="arc2-content-frame" src="./arc-2-ui/arc-2-ui.html" title="ARC 2 UI-Kit"></iframe>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const mainTabs = Array.from(document.querySelectorAll('.arc2-navbar-main-tabs .tab-button'));
+      const addTriggerButton = document.getElementById('arc2NavbarAddTrigger');
+      const titleNode = document.getElementById('arc2NavbarTitle');
+      const secondaryActionsNode = document.getElementById('arc2NavbarSecondaryActions');
+
+      const sectionConfigs = {
+        gallery: {
+          title: 'Карточки',
+          type: 'tabs',
+          ariaLabel: 'Фильтрация карточек',
+          items: [
+            { label: 'Все карточки', count: '1.4K', active: true, iconClass: 'arc2-icon-images' },
+            { label: 'Изображения', count: '1.4K', active: false, iconClass: 'arc2-icon-image' },
+            { label: 'Видео', count: '128', active: false, iconClass: 'arc2-icon-play' }
+          ]
+        },
+        tags: {
+          title: 'Категории и метки',
+          type: 'button',
+          buttonLabel: 'Добавить категорию'
+        },
+        collections: {
+          title: 'Коллекции',
+          type: 'button',
+          buttonLabel: 'Добавить коллекцию'
+        },
+        moodboard: {
+          title: 'Мудборд',
+          type: 'tabs',
+          ariaLabel: 'Фильтрация мудборда',
+          items: [
+            { label: 'Карточки', count: '32', active: true, iconClass: 'arc2-icon-images' },
+            { label: 'Доска', active: false, iconClass: 'arc2-icon-whiteboard' }
+          ]
+        },
+        settings: {
+          title: 'Настройки',
+          type: 'tabs',
+          ariaLabel: 'Разделы настроек',
+          items: [
+            { label: 'Хранилище', active: true, iconClass: 'arc2-icon-hard-drive' },
+            { label: 'Статистика', active: false, iconClass: 'arc2-icon-pie-chart' },
+            { label: 'История', active: false, iconClass: 'arc2-icon-history' },
+            { label: 'Поиск дублей', active: false, iconClass: 'arc2-icon-copy' }
+          ]
+        },
+        uiKit: {
+          title: 'UI-Kit',
+          type: 'titleOnly'
+        },
+        add: {
+          title: 'Добавить карточки',
+          type: 'buttonGroup',
+          buttons: [
+            { label: 'Отмена', variant: 'outline' },
+            { label: 'Добавить', variant: 'success', count: '3' }
+          ]
+        },
+        collectionDetail: {
+          title: 'Коллекция: «Название коллекции»',
+          type: 'collectionDetail',
+          leftActions: {
+            backAriaLabel: 'Назад',
+            showEditIcon: true
+          },
+          rightTabs: {
+            ariaLabel: 'Фильтрация карточек коллекции',
+            items: [
+              { label: 'Все карточки', count: '1.4K', active: true, iconClass: 'arc2-icon-images' },
+              { label: 'Изображения', count: '1.4K', active: false, iconClass: 'arc2-icon-image' },
+              { label: 'Видео', count: '128', active: false, iconClass: 'arc2-icon-play' }
+            ]
+          }
+        },
+        editCardDetail: {
+          title: 'Изменить карточку',
+          type: 'editCardDetail',
+          actions: [
+            { label: 'Отмена', variant: 'outline' },
+            { label: 'Сохранить изменения', variant: 'success', iconClass: 'arc2-icon-save' }
+          ]
+        }
+      };
+
+      const ICONS_SVG = {
+        search: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.0219 16.9989C18.5534 15.4616 19.5 13.3413 19.5 11C19.5 6.30558 15.6944 2.5 11 2.5C6.30558 2.5 2.5 6.30558 2.5 11C2.5 15.6944 6.30558 19.5 11 19.5C13.3531 19.5 15.4828 18.5438 17.0219 16.9989ZM17.0219 16.9989L21.5 21.5" stroke="white" stroke-linecap="round"/></svg>',
+        close: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 5.5L18.5 18.5M18.5 5.5L5.5 18.5" stroke="white" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        plus: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 11.5H18.5M11.5 4.5V18.5" stroke="white" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        images: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="5.5" y="2.5" width="16" height="16" rx="2.5" stroke="white"/><path d="M10.5 5.5C11.6046 5.5 12.5 6.39543 12.5 7.5C12.5 8.60457 11.6046 9.5 10.5 9.5C9.39543 9.5 8.5 8.60457 8.5 7.5C8.5 6.39543 9.39543 5.5 10.5 5.5Z" stroke="white" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.5 18.5L16.5858 10.4142C17.3668 9.63316 18.6332 9.63316 19.4142 10.4142L21.5 12.5" stroke="white"/><path d="M5.5 5.5H5C3.61929 5.5 2.5 6.61929 2.5 8V19C2.5 20.3807 3.61929 21.5 5 21.5H16C17.3807 21.5 18.5 20.3807 18.5 19V18.5" stroke="white" stroke-linecap="round"/></svg>',
+        image: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="2.5" width="19" height="19" rx="2.5" stroke="white"/><path d="M9 6.5C10.3807 6.5 11.5 7.61929 11.5 9C11.5 10.3807 10.3807 11.5 9 11.5C7.61929 11.5 6.5 10.3807 6.5 9C6.5 7.61929 7.61929 6.5 9 6.5Z" stroke="white" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 21.5L15.0858 11.9142C15.8668 11.1332 17.1332 11.1332 17.9142 11.9142L21.5 15.5" stroke="white"/></svg>',
+        play: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 1.5C17.799 1.5 22.5 6.20101 22.5 12C22.5 17.799 17.799 22.5 12 22.5C6.20101 22.5 1.5 17.799 1.5 12C1.5 6.20101 6.20101 1.5 12 1.5Z" stroke="white" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+        whiteboard: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17.5 22.5L12 17.5L6.5 22.5" stroke="white" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.5 1.5L10.5 1.5" stroke="white" stroke-linecap="round"/><path d="M5.5 7.5L11.5 7.5" stroke="white" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 10.5L8.5 10.5" stroke="white" stroke-linecap="round" stroke-linejoin="round"/><rect x="1.5" y="3.5" width="21" height="14" rx="2.5" stroke="white"/></svg>',
+        hardDrive: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22 11.5H2" stroke="white" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.66309 3.5H16.3369C17.1988 3.5 18.0002 3.944 18.457 4.6748L22.1201 10.5352C22.3684 10.9325 22.5 11.3918 22.5 11.8604V18C22.5 19.3807 21.3807 20.5 20 20.5H4C2.61929 20.5 1.5 19.3807 1.5 18V11.8604C1.50001 11.3918 1.63156 10.9325 1.87988 10.5352L5.54297 4.6748C5.99984 3.94399 6.80121 3.5 7.66309 3.5Z" stroke="white"/><circle cx="6" cy="16" r="1.5" stroke="white"/><circle cx="12" cy="16" r="1.5" stroke="white"/></svg>',
+        pieChart: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M22.0124 15.1626C21.4687 16.8838 20.4905 18.4358 19.1722 19.6688C17.8538 20.9017 16.2399 21.774 14.4862 22.2014C12.7325 22.6288 10.8982 22.5969 9.16042 22.1087C7.42264 21.6206 5.84004 20.6927 4.5654 19.4146C3.29076 18.1366 2.36712 16.5515 1.88365 14.8124C1.40018 13.0733 1.3732 11.2389 1.80532 9.48635C2.23744 7.73379 3.11406 6.12223 4.35056 4.80722C5.58707 3.49221 7.14169 2.51817 8.86437 1.97913" stroke="white" stroke-linecap="round"/><mask id="path-2-inside-1_480_2665" fill="white"><path d="M22 12C22.5523 12 23.0047 11.5514 22.9546 11.0014C22.8541 9.89918 22.5877 8.81651 22.1627 7.79048C21.6099 6.4559 20.7996 5.24327 19.7782 4.22183C18.7567 3.20038 17.5441 2.39013 16.2095 1.83732C15.1835 1.41233 14.1008 1.1459 12.9986 1.04542C12.4486 0.995284 12 1.44772 12 2V11C12 11.5523 12.4477 12 13 12H22Z"/></mask><path d="M22 12C22.5523 12 23.0047 11.5514 22.9546 11.0014C22.8541 9.89918 22.5877 8.81651 22.1627 7.79048C21.6099 6.4559 20.7996 5.24327 19.7782 4.22183C18.7567 3.20038 17.5441 2.39013 16.2095 1.83732C15.1835 1.41233 14.1008 1.1459 12.9986 1.04542C12.4486 0.995284 12 1.44772 12 2V11C12 11.5523 12.4477 12 13 12H22Z" stroke="white" stroke-width="2" stroke-linejoin="round" mask="url(#path-2-inside-1_480_2665)"/></svg>',
+        history: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 3.50001C3 3.22386 2.77614 3.00001 2.5 3.00001C2.22386 3.00001 2 3.22386 2 3.50001H2.5H3ZM2.5 8.50001H2C2 8.77615 2.22386 9.00001 2.5 9.00001V8.50001ZM7.5 9.00001C7.77614 9.00001 8 8.77615 8 8.50001C8 8.22386 7.77614 8.00001 7.5 8.00001V8.50001V9.00001ZM3 11.5C3 11.2239 2.77614 11 2.5 11C2.22386 11 2 11.2239 2 11.5H2.5H3ZM4.83102 17.5436L5.20152 17.2078H5.20152L4.83102 17.5436ZM10.6166 20.4565L10.6657 19.959V19.959L10.6166 20.4565ZM16.8598 18.73L17.1575 19.1317V19.1317L16.8598 18.73ZM14.1162 2.88864L14.2615 2.41023V2.41023L14.1162 2.88864ZM12 6.50001C12 6.22386 11.7762 6.00001 11.5 6.00001C11.2239 6.00001 11 6.22386 11 6.50001H11.5H12ZM11.5 11.5H11C11 11.6894 11.107 11.8625 11.2764 11.9472L11.5 11.5ZM15.2764 13.9472C15.5234 14.0707 15.8237 13.9706 15.9472 13.7236C16.0707 13.4766 15.9706 13.1763 15.7236 13.0528L15.5 13.5L15.2764 13.9472ZM2.5 3.50001H2V8.50001H2.5H3V3.50001H2.5ZM2.5 8.50001V9.00001H7.5V8.50001V8.00001H2.5V8.50001ZM2.5 11.5H2C2 13.8581 2.87702 16.132 4.46052 17.8793L4.83102 17.5436L5.20152 17.2078C3.7847 15.6444 3 13.6099 3 11.5H2.5ZM4.83102 17.5436L4.46052 17.8793C6.04401 19.6267 8.22078 20.7227 10.5675 20.9541L10.6166 20.4565L10.6657 19.959C8.56596 19.7519 6.61833 18.7712 5.20152 17.2078L4.83102 17.5436ZM10.6166 20.4565L10.5675 20.9541C12.9142 21.1856 15.2632 20.536 17.1575 19.1317L16.8598 18.73L16.562 18.3283C14.8671 19.5848 12.7654 20.1661 10.6657 19.959L10.6166 20.4565ZM16.8598 18.73L17.1575 19.1317C19.0519 17.7273 20.3562 15.6687 20.8169 13.356L20.3266 13.2583L19.8362 13.1606C19.424 15.2298 18.257 17.0718 16.562 18.3283L16.8598 18.73ZM20.3266 13.2583L20.8169 13.356C21.2776 11.0433 20.8617 8.64193 19.6501 6.61888L19.2212 6.87578L18.7922 7.13269C19.8763 8.94278 20.2484 11.0914 19.8362 13.1606L20.3266 13.2583ZM19.2212 6.87578L19.6501 6.61888C18.4385 4.59583 16.5178 3.09571 14.2615 2.41023L14.1162 2.88864L13.9708 3.36705C15.9896 3.98037 17.7082 5.32259 18.7922 7.13269L19.2212 6.87578ZM14.1162 2.88864L14.2615 2.41023C12.0052 1.72476 9.57465 1.90294 7.44244 2.91012L7.65599 3.36222L7.86955 3.81432C9.77732 2.91316 11.9521 2.75373 13.9708 3.36705L14.1162 2.88864ZM7.65599 3.36222L7.44244 2.91012C5.31292 3.91603 3.09864 6.18469 2.05279 8.2764L2.5 8.50001L2.94721 8.72361C3.90136 6.81532 5.95909 4.71675 7.86955 3.81432L7.65599 3.36222ZM11.5 6.50001H11V11.5H11.5H12V6.50001H11.5ZM11.5 11.5L11.2764 11.9472L15.2764 13.9472L15.5 13.5L15.7236 13.0528L11.7236 11.0528L11.5 11.5Z" fill="white"/></svg>',
+        copy: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7.5" y="7.5" width="14" height="14" rx="2.5" stroke="white"/><path d="M16.5 4.5C16.5 3.39543 15.6046 2.5 14.5 2.5H4.5C3.39543 2.5 2.5 3.39543 2.5 4.5V14.5C2.5 15.6046 3.39543 16.5 4.5 16.5" stroke="white" stroke-linecap="round"/></svg>',
+        save: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 2.5H15.8769C16.5403 2.5 17.1766 2.76339 17.6458 3.23258L20.7674 6.35418C21.2366 6.82337 21.5 7.45969 21.5 8.12311V18.5C21.5 19.8807 20.3807 21 19 21H5C3.61929 21 2.5 19.8807 2.5 18.5V5.5C2.5 3.84315 3.84315 2.5 5.5 2.5Z" stroke="white"/><path d="M16.5 2.5V8.5C16.5 9.05228 16.0523 9.5 15.5 9.5H8.5C7.94772 9.5 7.5 9.05228 7.5 8.5V2.5" stroke="white"/><path d="M8.5 21V14.5C8.5 13.9477 8.94772 13.5 9.5 13.5H14.5C15.0523 13.5 15.5 13.9477 15.5 14.5V21" stroke="white"/></svg>',
+        chevron: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 5L7.5 12L14.5 19" stroke="white" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      };
+
+      const ICON_CLASS_TO_KEY = {
+        arc2_icon_search: 'search',
+        arc2_icon_close: 'close',
+        arc2_icon_plus: 'plus',
+        arc2_icon_images: 'images',
+        arc2_icon_image: 'image',
+        arc2_icon_play: 'play',
+        arc2_icon_whiteboard: 'whiteboard',
+        arc2_icon_hard_drive: 'hardDrive',
+        arc2_icon_pie_chart: 'pieChart',
+        arc2_icon_history: 'history',
+        arc2_icon_copy: 'copy',
+        arc2_icon_save: 'save',
+        arc2_icon_chevron: 'chevron'
+      };
+
+      const normalizeSvgForCurrentColor = (svgText) =>
+        svgText.replace(/stroke="white"/g, 'stroke="currentColor"').replace(/fill="white"/g, 'fill="currentColor"');
+
+      const classToIconKey = (element) => {
+        for (const className of element.classList) {
+          if (!className.startsWith('arc2-icon-')) continue;
+          const key = className.replace(/-/g, '_');
+          if (ICON_CLASS_TO_KEY[key]) return ICON_CLASS_TO_KEY[key];
+        }
+        return null;
+      };
+
+      const hydrateIconNode = (node) => {
+        if (!(node instanceof HTMLElement)) return;
+        const iconKey = classToIconKey(node);
+        if (!iconKey || !ICONS_SVG[iconKey]) return;
+        const svgMarkup = normalizeSvgForCurrentColor(ICONS_SVG[iconKey]);
+        node.innerHTML = svgMarkup;
+        const svg = node.querySelector('svg');
+        if (!svg) return;
+        svg.classList.add('arc-navbar-icon-svg');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.removeAttribute('width');
+        svg.removeAttribute('height');
+      };
+
+      const hydrateNavbarIcons = (scope = document) => {
+        scope.querySelectorAll('.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron').forEach(hydrateIconNode);
+      };
+
+      const createTabsNode = (config) => {
+        const tabs = document.createElement('div');
+        tabs.className = 'tabs arc2-navbar-filters';
+        tabs.setAttribute('role', 'tablist');
+        tabs.setAttribute('aria-label', config.ariaLabel);
+
+        config.items.forEach((item) => {
+          const button = document.createElement('button');
+          button.className = `tab-button${item.active ? ' is-active' : ''}`;
+          button.type = 'button';
+          button.setAttribute('role', 'tab');
+          button.setAttribute('aria-selected', item.active ? 'true' : 'false');
+          button.innerHTML = `${item.iconClass ? `<span class="tab-icon ${item.iconClass}" aria-hidden="true"></span>` : ''}<span>${item.label}</span>${item.count ? `<span class="tab-counter">${item.count}</span>` : ''}`;
+          tabs.appendChild(button);
+        });
+
+        return tabs;
+      };
+
+      const createButtonNode = (label) => {
+        const button = document.createElement('button');
+        button.className = 'btn btn-secondary btn-ds';
+        button.type = 'button';
+        button.innerHTML = `<span class="btn-ds__value">${label}</span><span class="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>`;
+        return button;
+      };
+
+      const createButtonGroupNode = (buttonsConfig) => {
+        const group = document.createElement('div');
+        group.className = 'arc2-navbar-action-group';
+        buttonsConfig.forEach((item) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = `btn ${item.variant === 'success' ? 'btn-success' : 'btn-outline'} btn-ds`;
+          button.innerHTML = `<span class="btn-ds__value">${item.label}</span>${item.count ? `<span class="btn-ds__counter">${item.count}</span>` : ''}${item.variant === 'success' ? '<span class="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>' : ''}`;
+          group.appendChild(button);
+        });
+        return group;
+      };
+
+      const createCollectionDetailNode = (config) => {
+        const container = document.createElement('div');
+        container.className = 'arc2-navbar-collection-detail';
+
+        const left = document.createElement('div');
+        left.className = 'arc2-navbar-collection-detail-left';
+
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'btn btn-outline btn-icon-only';
+        backBtn.setAttribute('aria-label', config.leftActions.backAriaLabel || 'Назад');
+        backBtn.innerHTML = '<span class="btn-icon-only__glyph arc2-icon-chevron" aria-hidden="true"></span>';
+        left.appendChild(backBtn);
+
+        const title = document.createElement('h1');
+        title.className = 'h1 arc2-navbar-title';
+        title.textContent = config.title;
+        left.appendChild(title);
+
+        if (config.leftActions.showEditIcon) {
+          const editBtn = document.createElement('button');
+          editBtn.type = 'button';
+          editBtn.className = 'btn btn-ghost btn-icon-only';
+          editBtn.setAttribute('aria-label', 'Редактировать коллекцию');
+          editBtn.innerHTML = '<span class="btn-icon-only__glyph arc2-icon-copy" aria-hidden="true"></span>';
+          left.appendChild(editBtn);
+        }
+
+        const rightTabs = createTabsNode(config.rightTabs);
+        rightTabs.classList.add('arc2-navbar-filters');
+        container.appendChild(left);
+        container.appendChild(rightTabs);
+        return container;
+      };
+
+      const createEditCardDetailNode = (config) => {
+        const container = document.createElement('div');
+        container.className = 'arc2-navbar-edit-detail';
+
+        const title = document.createElement('h1');
+        title.className = 'h1 arc2-navbar-title';
+        title.textContent = config.title;
+
+        const actions = document.createElement('div');
+        actions.className = 'arc2-navbar-action-group';
+        config.actions.forEach((item) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = `btn ${item.variant === 'success' ? 'btn-success' : 'btn-outline'} btn-ds`;
+          button.innerHTML = `<span class="btn-ds__value">${item.label}</span>${item.iconClass ? `<span class="btn-ds__icon ${item.iconClass}" aria-hidden="true"></span>` : ''}`;
+          actions.appendChild(button);
+        });
+
+        container.appendChild(title);
+        container.appendChild(actions);
+        return container;
+      };
+
+      const renderSecondRow = (sectionKey) => {
+        const config = sectionConfigs[sectionKey];
+        if (!config || !titleNode || !secondaryActionsNode) return;
+
+        titleNode.textContent = config.title;
+        secondaryActionsNode.innerHTML = '';
+
+        if (config.type === 'tabs') {
+          secondaryActionsNode.appendChild(createTabsNode(config));
+        } else if (config.type === 'button') {
+          secondaryActionsNode.appendChild(createButtonNode(config.buttonLabel));
+        } else if (config.type === 'buttonGroup') {
+          secondaryActionsNode.appendChild(createButtonGroupNode(config.buttons));
+        } else if (config.type === 'collectionDetail') {
+          secondaryActionsNode.appendChild(createCollectionDetailNode(config));
+        } else if (config.type === 'editCardDetail') {
+          secondaryActionsNode.appendChild(createEditCardDetailNode(config));
+        }
+        hydrateNavbarIcons(secondaryActionsNode);
+      };
+
+      const uiKitSectionNode = document.getElementById('arc2UiKitSection');
+      const uiKitFrameNode = uiKitSectionNode instanceof HTMLElement
+        ? uiKitSectionNode.querySelector('.arc2-content-frame')
+        : null;
+      const applyHiddenScrollbarsToUiKitFrame = () => {
+        if (!(uiKitFrameNode instanceof HTMLIFrameElement)) return;
+        const frameDocument = uiKitFrameNode.contentDocument;
+        if (!frameDocument || !frameDocument.head || !frameDocument.body) return;
+        if (frameDocument.getElementById('arc2-hide-scrollbars-style')) return;
+        const style = frameDocument.createElement('style');
+        style.id = 'arc2-hide-scrollbars-style';
+        style.textContent = `
+          html, body {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+          }
+          html::-webkit-scrollbar,
+          body::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+          }
+        `;
+        frameDocument.head.appendChild(style);
+      };
+      if (uiKitFrameNode instanceof HTMLIFrameElement) {
+        uiKitFrameNode.addEventListener('load', applyHiddenScrollbarsToUiKitFrame);
+      }
+      const renderSectionContent = (sectionKey) => {
+        if (!(uiKitSectionNode instanceof HTMLElement)) return;
+        const showUiKit = sectionKey === 'uiKit';
+        uiKitSectionNode.classList.toggle('arc2-content-section--hidden', !showUiKit);
+      };
+
+      const setActiveTab = (buttons, activeButton) => {
+        buttons.forEach((tab) => {
+          tab.classList.remove('is-active');
+          tab.setAttribute('aria-selected', 'false');
+        });
+        activeButton.classList.add('is-active');
+        activeButton.setAttribute('aria-selected', 'true');
+      };
+
+      mainTabs.forEach((button) => {
+        button.addEventListener('click', () => {
+          const sectionKey = button.dataset.section || 'gallery';
+          setActiveTab(mainTabs, button);
+          renderSecondRow(sectionKey);
+          renderSectionContent(sectionKey);
+        });
+      });
+
+      if (addTriggerButton instanceof HTMLButtonElement) {
+        addTriggerButton.addEventListener('click', () => {
+          renderSecondRow('add');
+          renderSectionContent('add');
+        });
+      }
+
+      document.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const button = target.closest('.tabs[role="tablist"] .tab-button');
+        if (!(button instanceof HTMLButtonElement)) return;
+        if (button.closest('.arc2-navbar-main-tabs')) return;
+        const tabList = button.closest('.tabs[role="tablist"]');
+        if (!(tabList instanceof HTMLElement)) return;
+        const buttons = Array.from(tabList.querySelectorAll('.tab-button'));
+        setActiveTab(buttons, button);
+      });
+
+      const searchContainer = document.querySelector('.arc2-navbar-search-live');
+      const searchInput = searchContainer ? searchContainer.querySelector('.search-multiselect .search-inner') : null;
+      const clearButton = searchContainer ? searchContainer.querySelector('.search-multiselect-clear-btn') : null;
+
+      const updateInputState = () => {
+        if (!(searchInput instanceof HTMLInputElement) || !(searchContainer instanceof HTMLElement)) return;
+        if (searchInput.value.trim().length > 0) {
+          searchContainer.classList.add('has-value');
+        } else {
+          searchContainer.classList.remove('has-value');
+        }
+      };
+
+      if (searchInput instanceof HTMLInputElement) {
+        searchInput.addEventListener('input', updateInputState);
+      }
+      if (clearButton instanceof HTMLButtonElement && searchInput instanceof HTMLInputElement) {
+        clearButton.addEventListener('click', () => {
+          searchInput.value = '';
+          updateInputState();
+          searchInput.focus();
+        });
+      }
+
+      renderSecondRow('gallery');
+      renderSectionContent('gallery');
+      updateInputState();
+      hydrateNavbarIcons(document);
+      applyHiddenScrollbarsToUiKitFrame();
+    })();
+  </script>
+</body>
+</html>

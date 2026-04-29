@@ -1,0 +1,6 @@
+node_modules/
+renderer/dist/
+main/
+preload/
+dist/
+npm-debug.log*
