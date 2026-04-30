@@ -1,3 +1,21 @@
+@import url("/ui/arc-2-navbar.css");
+
+/* Inline SVG из `hydrateArc2NavbarIcons`: stroke/fill → currentColor, размер с родителя */
+.btn-ds__icon > .arc-navbar-icon-svg,
+.btn-icon-only__glyph > .arc-navbar-icon-svg,
+.tab-icon > .arc-navbar-icon-svg,
+.search-icon > .arc-navbar-icon-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.input-inline-icon > .arc-navbar-icon-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -16,23 +34,213 @@ a {
   color: inherit;
 }
 
-.arc2-home {
-  min-height: 100vh;
-  padding: 32px;
+.arc2-app-outlet {
+  min-height: calc(100vh - 140px);
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--radius-l);
+  background: var(--gray-1000);
+  --panel-bg: var(--gray-1000);
+  --panel-border: var(--gray-900);
+  --text-elev-primary: var(--gray-300);
+  --text-elev-secondary: var(--gray-600);
+}
+
+.arc2-tags-outlet {
+  padding: 0;
+}
+
+.arc2-category-panels {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--s-3);
 }
 
-.arc2-home__nav {
+.arc2-category-panel-layout {
   display: flex;
-  gap: 12px;
+  flex-direction: row;
+  align-items: stretch;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--radius-l);
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  box-shadow: none;
 }
 
-.arc2-home__nav a {
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  padding: 10px 14px;
-  text-decoration: none;
-  background: var(--panel-bg);
+.arc2-category-panel-layout[data-input-size="m"][data-btn-size="m"] {
+  --btn-h: 36px;
+  --btn-radius: 12px;
+  --btn-pad-x: 16px;
+  --btn-gap: 8px;
+  --btn-font-size: 14px;
+  --btn-line-height: 22px;
+  --btn-icon-size: 16px;
+  --btn-icon-url: url("/ui/icons/Icon%20M.svg");
+  --tab-h: 36px;
+  --tab-radius: 12px;
+  --tab-pad-x: 16px;
+  --tab-font-size: var(--typo-p-m-size);
+  --tab-line-height: var(--typo-p-m-line);
+  --tab-gap: 8px;
+  --tab-icon-size: 16px;
+  --input-h: 36px;
+  --input-radius: 12px;
+  --input-pad-x: 10px;
+  --input-gap: 8px;
+  --input-icon-size: 16px;
+  --textarea-h: 83px;
+  --input-font-size: 14px;
+  --input-line-height: 22px;
+  --input-icon-search-url: url("/ui/icons/search_m.svg");
+  --input-icon-close-url: url("/ui/icons/close_m.svg");
+  --input-icon-trash-url: url("/ui/icons/trash_m.svg");
+  --input-icon-chevron-url: url("/ui/icons/chevron_m.svg");
+  --input-icon-check-url: url("/ui/icons/check_m.svg");
+}
+
+.arc2-category-panel-settings {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  width: max-content;
+  max-width: 100%;
+  align-self: flex-start;
+}
+
+.arc2-category-panel-stretch {
+  width: 100%;
+  min-width: 0;
+}
+
+.arc2-category-priority.tabs {
+  flex-wrap: wrap;
+  width: max-content;
+  max-width: 100%;
+}
+
+button.color-swatch-inline {
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  appearance: none;
+  background-clip: padding-box;
+}
+
+button.color-swatch-inline:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.arc2-category-panel-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.arc2-category-rank-buttons {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.arc2-category-panel-divider {
+  width: 1px;
+  align-self: stretch;
+  flex: 0 0 auto;
+  background: var(--panel-border);
+}
+
+.arc2-category-panel-tags {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.arc2-category-add-tag {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  align-items: center;
+}
+
+.arc2-category-add-tag .field.input-live.arc2-category-add-tag-field {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.arc2-category-add-tag-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.arc2-category-tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  align-items: flex-start;
+}
+
+@media (max-width: 960px) {
+  .arc2-category-panel-layout {
+    flex-direction: column;
+  }
+
+  .arc2-category-panel-divider {
+    width: 100%;
+    height: 1px;
+  }
+}
+
+.arc2-category-panel-tags--drop-target {
+  border-radius: var(--radius-m);
+  outline: 1px dashed var(--input-border-focus);
+  outline-offset: 0;
+}
+
+.chip[draggable='true']:not(:disabled) {
+  cursor: grab;
+}
+
+.chip.arc2-tag-chip--dragging {
+  cursor: grabbing;
+  opacity: 0.88;
+}
+
+.arc2-tag-modal-preview-wrap {
+  width: 128px;
+  height: 128px;
+  border-radius: var(--radius-s);
+  overflow: hidden;
+  border: 1px solid var(--surface-border-default);
+  background: var(--gray-900);
+}
+
+.arc2-tag-modal-preview-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Шеврон в React-селекторе: chevron_m.svg уже «вниз», как в pseudo-select — без доп. поворота */
+.selector-caret.arc2-selector-dropdown-caret {
+  align-items: center;
+  justify-content: center;
+}
+
+.selector-caret.arc2-selector-dropdown-caret > .arc-navbar-icon-svg {
+  width: var(--input-icon-size);
+  height: var(--input-icon-size);
+  display: block;
+}
+
+/* Кнопка «Назад»: тот же chevron_m.svg, поворот влево */
+.arc2-chevron-point-left > .arc-navbar-icon-svg {
+  transform: rotate(90deg);
 }

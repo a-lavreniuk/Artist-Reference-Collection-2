@@ -18,7 +18,6 @@
             <button class="tab-button" data-section="collections" type="button" role="tab" aria-selected="false">Коллекции</button>
             <button class="tab-button" data-section="moodboard" type="button" role="tab" aria-selected="false">Мудборд</button>
             <button class="tab-button" data-section="settings" type="button" role="tab" aria-selected="false">Настройки</button>
-            <button class="tab-button" data-section="uiKit" type="button" role="tab" aria-selected="false">UI-Kit</button>
           </div>
         </div>
 
@@ -45,10 +44,41 @@
         <div class="arc2-navbar-secondary-actions" id="arc2NavbarSecondaryActions"></div>
       </div>
     </header>
-    <section class="arc2-content-section arc2-content-section--hidden" id="arc2UiKitSection">
-      <iframe class="arc2-content-frame" src="./arc-2-ui/arc-2-ui.html" title="ARC 2 UI-Kit"></iframe>
-    </section>
   </main>
+
+  <div class="arc-modal-host" id="arc2TagsCategoryModalHost" hidden aria-hidden="true">
+    <section
+      class="arc-modal"
+      data-elevation="raised"
+      data-input-size="s"
+      data-btn-size="s"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="arc2TagsCategoryModalTitle"
+    >
+      <header class="arc-modal__header arc-modal__header--title-subtitle">
+        <div class="arc-modal__title-block">
+          <h3 class="arc-modal__title" id="arc2TagsCategoryModalTitle">Новая категория</h3>
+          <p class="arc-modal__subtitle">Введите название категории</p>
+        </div>
+        <button type="button" class="arc-modal__close" data-arc2-modal-close aria-label="Закрыть">
+          <span class="tab-icon arc2-icon-close" aria-hidden="true"></span>
+        </button>
+      </header>
+      <div class="arc-modal__body">
+        <div class="arc-modal__slot">
+          <label class="field input-live" data-live-input>
+            <input class="input" placeholder="Название категории" />
+            <button class="input-inline-icon input-inline-icon-floating input-clear-btn input-inline-icon--close" type="button" aria-label="Очистить"></button>
+          </label>
+        </div>
+      </div>
+      <footer class="arc-modal__footer arc-modal__footer--actions-2">
+        <button type="button" class="btn btn-outline btn-ds btn-s" data-arc2-modal-close><span class="btn-ds__value">Отмена</span></button>
+        <button type="button" class="btn btn-primary btn-ds btn-s" data-arc2-modal-close><span class="btn-ds__value">Создать</span></button>
+      </footer>
+    </section>
+  </div>
 
   <script>
     (() => {
@@ -56,6 +86,8 @@
       const addTriggerButton = document.getElementById('arc2NavbarAddTrigger');
       const titleNode = document.getElementById('arc2NavbarTitle');
       const secondaryActionsNode = document.getElementById('arc2NavbarSecondaryActions');
+      const tagsCategoryModalHost = document.getElementById('arc2TagsCategoryModalHost');
+      let activeArc2ModalHost = null;
 
       const sectionConfigs = {
         gallery: {
@@ -97,10 +129,6 @@
             { label: 'История', active: false, iconClass: 'arc2-icon-history' },
             { label: 'Поиск дублей', active: false, iconClass: 'arc2-icon-copy' }
           ]
-        },
-        uiKit: {
-          title: 'UI-Kit',
-          type: 'titleOnly'
         },
         add: {
           title: 'Добавить карточки',
@@ -221,8 +249,27 @@
         const button = document.createElement('button');
         button.className = 'btn btn-secondary btn-ds';
         button.type = 'button';
+        button.dataset.arc2NavbarAction = label;
         button.innerHTML = `<span class="btn-ds__value">${label}</span><span class="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>`;
         return button;
+      };
+
+      const openTagsCategoryModal = () => {
+        if (!(tagsCategoryModalHost instanceof HTMLElement)) return;
+        tagsCategoryModalHost.hidden = false;
+        tagsCategoryModalHost.setAttribute('aria-hidden', 'false');
+        activeArc2ModalHost = tagsCategoryModalHost;
+        const firstInput = tagsCategoryModalHost.querySelector('input');
+        if (firstInput instanceof HTMLInputElement) {
+          firstInput.focus();
+        }
+      };
+
+      const closeArc2Modal = () => {
+        if (!(activeArc2ModalHost instanceof HTMLElement)) return;
+        activeArc2ModalHost.hidden = true;
+        activeArc2ModalHost.setAttribute('aria-hidden', 'true');
+        activeArc2ModalHost = null;
       };
 
       const createButtonGroupNode = (buttonsConfig) => {
@@ -317,38 +364,6 @@
         hydrateNavbarIcons(secondaryActionsNode);
       };
 
-      const uiKitSectionNode = document.getElementById('arc2UiKitSection');
-      const uiKitFrameNode = uiKitSectionNode instanceof HTMLElement
-        ? uiKitSectionNode.querySelector('.arc2-content-frame')
-        : null;
-      const applyHiddenScrollbarsToUiKitFrame = () => {
-        if (!(uiKitFrameNode instanceof HTMLIFrameElement)) return;
-        const frameDocument = uiKitFrameNode.contentDocument;
-        if (!frameDocument || !frameDocument.head || !frameDocument.body) return;
-        if (frameDocument.getElementById('arc2-hide-scrollbars-style')) return;
-        const style = frameDocument.createElement('style');
-        style.id = 'arc2-hide-scrollbars-style';
-        style.textContent = `
-          html, body {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-          }
-          html::-webkit-scrollbar,
-          body::-webkit-scrollbar {
-            width: 0;
-            height: 0;
-          }
-        `;
-        frameDocument.head.appendChild(style);
-      };
-      if (uiKitFrameNode instanceof HTMLIFrameElement) {
-        uiKitFrameNode.addEventListener('load', applyHiddenScrollbarsToUiKitFrame);
-      }
-      const renderSectionContent = (sectionKey) => {
-        if (!(uiKitSectionNode instanceof HTMLElement)) return;
-        const showUiKit = sectionKey === 'uiKit';
-        uiKitSectionNode.classList.toggle('arc2-content-section--hidden', !showUiKit);
-      };
 
       const setActiveTab = (buttons, activeButton) => {
         buttons.forEach((tab) => {
@@ -364,14 +379,44 @@
           const sectionKey = button.dataset.section || 'gallery';
           setActiveTab(mainTabs, button);
           renderSecondRow(sectionKey);
-          renderSectionContent(sectionKey);
         });
       });
 
       if (addTriggerButton instanceof HTMLButtonElement) {
         addTriggerButton.addEventListener('click', () => {
           renderSecondRow('add');
-          renderSectionContent('add');
+        });
+      }
+
+      if (secondaryActionsNode instanceof HTMLElement) {
+        secondaryActionsNode.addEventListener('click', (event) => {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
+          const actionButton = target.closest('.btn.btn-secondary.btn-ds');
+          if (!(actionButton instanceof HTMLButtonElement)) return;
+          const action = actionButton.dataset.arc2NavbarAction || actionButton.textContent || '';
+          if (action.includes('Добавить категорию')) {
+            event.preventDefault();
+            openTagsCategoryModal();
+          }
+        });
+      }
+
+      document.querySelectorAll('[data-arc2-modal-close]').forEach((button) => {
+        button.addEventListener('click', closeArc2Modal);
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeArc2Modal();
+        }
+      });
+
+      if (tagsCategoryModalHost instanceof HTMLElement) {
+        tagsCategoryModalHost.addEventListener('click', (event) => {
+          if (event.target === tagsCategoryModalHost) {
+            closeArc2Modal();
+          }
         });
       }
 
@@ -412,10 +457,8 @@
       }
 
       renderSecondRow('gallery');
-      renderSectionContent('gallery');
       updateInputState();
       hydrateNavbarIcons(document);
-      applyHiddenScrollbarsToUiKitFrame();
     })();
   </script>
 </body>

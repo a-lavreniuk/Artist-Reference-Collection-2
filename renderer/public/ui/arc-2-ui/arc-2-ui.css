@@ -208,7 +208,8 @@ textarea {
   font-family: inherit;
 }
 
-body[data-elevation="sunken"] {
+body[data-elevation="sunken"],
+.arc2-category-panel-layout[data-elevation="sunken"] {
   --app-bg: var(--gray-1000);
   --panel-bg: var(--gray-1000);
   --panel-border: var(--gray-900);
@@ -233,7 +234,8 @@ body[data-elevation="raised"],
   --text-elev-secondary: var(--gray-400);
 }
 
-body[data-elevation="sunken"][data-typo-tone="white"] { --typo-tone-primary: var(--gray-300); --typo-tone-primary-hover: var(--gray-50); --typo-tone-primary-disabled: var(--gray-800); --typo-tone-secondary: var(--gray-600); --typo-tone-secondary-hover: var(--gray-500); --typo-tone-secondary-disabled: var(--gray-800); }
+body[data-elevation="sunken"][data-typo-tone="white"],
+.arc2-category-panel-layout[data-elevation="sunken"][data-typo-tone="white"] { --typo-tone-primary: var(--gray-300); --typo-tone-primary-hover: var(--gray-50); --typo-tone-primary-disabled: var(--gray-800); --typo-tone-secondary: var(--gray-600); --typo-tone-secondary-hover: var(--gray-500); --typo-tone-secondary-disabled: var(--gray-800); }
 body[data-elevation="default"][data-typo-tone="white"] { --typo-tone-primary: var(--gray-200); --typo-tone-primary-hover: var(--gray-50); --typo-tone-primary-disabled: var(--gray-700); --typo-tone-secondary: var(--gray-500); --typo-tone-secondary-hover: var(--gray-400); --typo-tone-secondary-disabled: var(--gray-700); }
 body[data-elevation="raised"][data-typo-tone="white"] { --typo-tone-primary: var(--gray-100); --typo-tone-primary-hover: var(--gray-50); --typo-tone-primary-disabled: var(--gray-600); --typo-tone-secondary: var(--gray-400); --typo-tone-secondary-hover: var(--gray-300); --typo-tone-secondary-disabled: var(--gray-600); }
 
@@ -769,7 +771,7 @@ body[data-btn-size="l"] {
   --btn-font-size: 14px;
   --btn-line-height: 22px;
   --btn-icon-size: 24px;
-  --btn-icon-url: url("./icons/Icon%20L.svg");
+  --btn-icon-url: url("../icons/Icon%20L.svg");
   --tab-h: 40px;
   --tab-radius: 12px;
   --tab-pad-x: 16px;
@@ -787,7 +789,7 @@ body[data-btn-size="m"] {
   --btn-font-size: 14px;
   --btn-line-height: 22px;
   --btn-icon-size: 16px;
-  --btn-icon-url: url("./icons/Icon%20M.svg");
+  --btn-icon-url: url("../icons/Icon%20M.svg");
   --tab-h: 36px;
   --tab-radius: 12px;
   --tab-pad-x: 16px;
@@ -806,7 +808,7 @@ body[data-btn-size="s"],
   --btn-font-size: 12px;
   --btn-line-height: 16px;
   --btn-icon-size: 12px;
-  --btn-icon-url: url("./icons/Icon%20S.svg");
+  --btn-icon-url: url("../icons/Icon%20S.svg");
   --tab-h: 24px;
   --tab-radius: 8px;
   --tab-pad-x: 8px;
@@ -825,11 +827,11 @@ body[data-input-size="l"] {
   --textarea-h: 87px;
   --input-font-size: 14px;
   --input-line-height: 22px;
-  --input-icon-search-url: url("./icons/search_m.svg");
-  --input-icon-close-url: url("./icons/close_m.svg");
-  --input-icon-trash-url: url("./icons/trash_m.svg");
-  --input-icon-chevron-url: url("./icons/chevron_m.svg");
-  --input-icon-check-url: url("./icons/check_m.svg");
+  --input-icon-search-url: url("../icons/search_m.svg");
+  --input-icon-close-url: url("../icons/close_m.svg");
+  --input-icon-trash-url: url("../icons/trash_m.svg");
+  --input-icon-chevron-url: url("../icons/chevron_m.svg");
+  --input-icon-check-url: url("../icons/check_m.svg");
 }
 
 body[data-input-size="m"] {
@@ -841,11 +843,11 @@ body[data-input-size="m"] {
   --textarea-h: 83px;
   --input-font-size: 14px;
   --input-line-height: 22px;
-  --input-icon-search-url: url("./icons/search_m.svg");
-  --input-icon-close-url: url("./icons/close_m.svg");
-  --input-icon-trash-url: url("./icons/trash_m.svg");
-  --input-icon-chevron-url: url("./icons/chevron_m.svg");
-  --input-icon-check-url: url("./icons/check_m.svg");
+  --input-icon-search-url: url("../icons/search_m.svg");
+  --input-icon-close-url: url("../icons/close_m.svg");
+  --input-icon-trash-url: url("../icons/trash_m.svg");
+  --input-icon-chevron-url: url("../icons/chevron_m.svg");
+  --input-icon-check-url: url("../icons/check_m.svg");
 }
 
 body[data-input-size="s"],
@@ -858,11 +860,11 @@ body[data-input-size="s"],
   --textarea-h: 58px;
   --input-font-size: 12px;
   --input-line-height: 16px;
-  --input-icon-search-url: url("./icons/search_s.svg");
-  --input-icon-close-url: url("./icons/close_s.svg");
-  --input-icon-trash-url: url("./icons/trash_s.svg");
-  --input-icon-chevron-url: url("./icons/chevron_s.svg");
-  --input-icon-check-url: url("./icons/check_s.svg");
+  --input-icon-search-url: url("../icons/search_s.svg");
+  --input-icon-close-url: url("../icons/close_s.svg");
+  --input-icon-trash-url: url("../icons/trash_s.svg");
+  --input-icon-chevron-url: url("../icons/chevron_s.svg");
+  --input-icon-check-url: url("../icons/check_s.svg");
 }
 
 /* Док: EL-INP-GROUP-SEARCH-MULTI всегда L — не зависит от глобального data-input-size */
@@ -875,11 +877,11 @@ body[data-input-size="s"],
   --textarea-h: 87px;
   --input-font-size: 14px;
   --input-line-height: 22px;
-  --input-icon-search-url: url("./icons/search_m.svg");
-  --input-icon-close-url: url("./icons/close_m.svg");
-  --input-icon-trash-url: url("./icons/trash_m.svg");
-  --input-icon-chevron-url: url("./icons/chevron_m.svg");
-  --input-icon-check-url: url("./icons/check_m.svg");
+  --input-icon-search-url: url("../icons/search_m.svg");
+  --input-icon-close-url: url("../icons/close_m.svg");
+  --input-icon-trash-url: url("../icons/trash_m.svg");
+  --input-icon-chevron-url: url("../icons/chevron_m.svg");
+  --input-icon-check-url: url("../icons/check_m.svg");
 }
 
 .btn-ds {
@@ -1279,7 +1281,7 @@ button.input {
   --input-font-size: var(--typo-p-s-size);
   --input-line-height: var(--typo-p-s-line);
   --input-icon-size: 12px;
-  --input-icon-search-url: url("./icons/search_s.svg");
+  --input-icon-search-url: url("../icons/search_s.svg");
 }
 
 .dropdown-separator {
@@ -2543,7 +2545,8 @@ button.input {
   --icons-warning-disabled: var(--yellow-900);
 }
 
-body[data-elevation="sunken"] {
+body[data-elevation="sunken"],
+.arc2-category-panel-layout[data-elevation="sunken"] {
   --input-fill-default: var(--gray-1000);
   --input-fill-hover: var(--gray-900);
   --input-fill-disabled: var(--gray-1000);

@@ -5,7 +5,6 @@ import App from './App';
 import './styles/index.css';
 import './styles/tokens.css';
 import './styles/ui-kit.css';
-import './styles/navbar.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

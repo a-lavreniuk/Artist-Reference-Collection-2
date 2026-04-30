@@ -1,0 +1,365 @@
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { addCategory, getNavbarMetrics, notifyCategoriesChanged, type NavbarMetrics } from '../../services/db';
+import { hydrateArc2NavbarIcons } from './navbarIconHydrate';
+import NewCategoryModal from './NewCategoryModal';
+
+type MainSectionKey = 'gallery' | 'tags' | 'collections' | 'moodboard' | 'settings';
+type ActiveView = MainSectionKey | 'add' | 'collectionDetail' | 'editCardDetail';
+
+type TabItem = {
+  key: string;
+  label: string;
+  count?: number;
+  iconClass: string;
+};
+
+const MAIN_TABS: Array<{ key: MainSectionKey; label: string; path: string }> = [
+  { key: 'gallery', label: 'Галерея', path: '/gallery' },
+  { key: 'tags', label: 'Метки', path: '/tags' },
+  { key: 'collections', label: 'Коллекции', path: '/collections' },
+  { key: 'moodboard', label: 'Мудборд', path: '/moodboard' },
+  { key: 'settings', label: 'Настройки', path: '/settings' }
+];
+
+const DEFAULT_METRICS: NavbarMetrics = {
+  totalCards: 0,
+  imageCards: 0,
+  videoCards: 0,
+  totalCollections: 0,
+  moodboardCards: 0,
+  totalCategories: 0
+};
+
+function formatTabCount(value: number): string {
+  if (value >= 1000) {
+    const k = value / 1000;
+    const rounded = Math.round(k * 10) / 10;
+    const text = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/\.0$/, '');
+    return `${text}K`;
+  }
+  return String(value);
+}
+
+export default function TopNavbar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const headerRef = useRef<HTMLElement>(null);
+
+  const [metrics, setMetrics] = useState<NavbarMetrics>(DEFAULT_METRICS);
+  const [searchValue, setSearchValue] = useState('');
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+
+  const [galleryFilter, setGalleryFilter] = useState('all');
+  const [moodboardFilter, setMoodboardFilter] = useState('cards');
+  const [settingsFilter, setSettingsFilter] = useState('storage');
+
+  const activeView = useMemo<ActiveView>(() => {
+    const path = location.pathname;
+    if (path === '/add') return 'add';
+    if (/^\/collections\/[^/]+$/.test(path)) return 'collectionDetail';
+    if (/^\/gallery\/[^/]+\/edit$/.test(path)) return 'editCardDetail';
+    if (path.startsWith('/tags')) return 'tags';
+    if (path.startsWith('/collections')) return 'collections';
+    if (path.startsWith('/moodboard')) return 'moodboard';
+    if (path.startsWith('/settings')) return 'settings';
+    return 'gallery';
+  }, [location.pathname]);
+
+  const activeMainTab: MainSectionKey =
+    activeView === 'collectionDetail' || activeView === 'editCardDetail' || activeView === 'add'
+      ? 'gallery'
+      : activeView;
+
+  useEffect(() => {
+    void refreshMetrics();
+  }, []);
+
+  useEffect(() => {
+    if (!showAddCategoryModal) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowAddCategoryModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showAddCategoryModal]);
+
+  const refreshMetrics = async () => {
+    const nextMetrics = await getNavbarMetrics();
+    setMetrics(nextMetrics);
+  };
+
+  const galleryTabs: TabItem[] = [
+    { key: 'all', label: 'Все карточки', count: metrics.totalCards, iconClass: 'arc2-icon-images' },
+    { key: 'images', label: 'Изображения', count: metrics.imageCards, iconClass: 'arc2-icon-image' },
+    { key: 'videos', label: 'Видео', count: metrics.videoCards, iconClass: 'arc2-icon-play' }
+  ];
+
+  const moodboardTabs: TabItem[] = [
+    { key: 'cards', label: 'Карточки', count: metrics.moodboardCards, iconClass: 'arc2-icon-images' },
+    { key: 'board', label: 'Доска', iconClass: 'arc2-icon-whiteboard' }
+  ];
+
+  const settingsTabs: TabItem[] = [
+    { key: 'storage', label: 'Хранилище', iconClass: 'arc2-icon-hard-drive' },
+    { key: 'stats', label: 'Статистика', iconClass: 'arc2-icon-pie-chart' },
+    { key: 'history', label: 'История', iconClass: 'arc2-icon-history' },
+    { key: 'duplicates', label: 'Поиск дублей', iconClass: 'arc2-icon-copy' }
+  ];
+
+  const title = getTitle(activeView);
+
+  const handleMainTabClick = (path: string) => {
+    navigate(path);
+  };
+
+  const openAddCategoryModal = () => {
+    setShowAddCategoryModal(true);
+  };
+
+  useLayoutEffect(() => {
+    if (headerRef.current) {
+      void hydrateArc2NavbarIcons(headerRef.current);
+    }
+  }, [
+    activeView,
+    activeMainTab,
+    galleryFilter,
+    moodboardFilter,
+    settingsFilter,
+    searchValue,
+    metrics,
+    showAddCategoryModal
+  ]);
+
+  return (
+    <>
+      <header ref={headerRef} className="arc2-navbar panel elevation-default" data-navbar-elevation="default">
+        <div className="arc2-navbar-row">
+          <div className="arc2-navbar-group">
+            <div className="tabs arc2-navbar-main-tabs" role="tablist" aria-label="Основная навигация">
+              {MAIN_TABS.map((tab) => {
+                const isActive = tab.key === activeMainTab;
+                return (
+                  <button
+                    key={tab.key}
+                    className={`tab-button${isActive ? ' is-active' : ''}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => handleMainTabClick(tab.path)}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="arc2-navbar-group arc2-navbar-group--grow">
+            <div
+              className={`field field-full search-multiselect-live arc2-navbar-search-live${searchValue ? ' has-value' : ''}`}
+              data-live-search-multi
+            >
+              <div className="input search-multiselect input--size-l input-slots arc2-navbar-search">
+                <span className="search-icon slot-leading arc2-icon-search" aria-hidden="true"></span>
+                <input
+                  className="search-inner slot-value"
+                  type="text"
+                  placeholder="Поиск по названиям меток или ID карточек..."
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                />
+                <button
+                  className="input-inline-icon search-multiselect-clear-btn input-inline-icon--close slot-trailing arc2-icon-close"
+                  type="button"
+                  aria-label="Очистить"
+                  onClick={() => setSearchValue('')}
+                ></button>
+              </div>
+            </div>
+          </div>
+
+          <div className="arc2-navbar-group">
+            <button
+              className="btn btn-primary btn-ds arc2-navbar-add"
+              type="button"
+              onClick={() => navigate('/add')}
+            >
+              <span className="btn-ds__value">Добавить карточки</span>
+              <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+
+        <div className="arc2-navbar-row">
+          <h1 className="h1 arc2-navbar-title">{title}</h1>
+          <div className="arc2-navbar-secondary-actions">
+            {activeView === 'gallery' && (
+              <FilterTabs
+                ariaLabel="Фильтрация карточек"
+                items={galleryTabs}
+                activeKey={galleryFilter}
+                onChange={setGalleryFilter}
+              />
+            )}
+            {activeView === 'tags' && (
+              <button className="btn btn-secondary btn-ds" type="button" onClick={openAddCategoryModal}>
+                <span className="btn-ds__value">Добавить категорию</span>
+                <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>
+              </button>
+            )}
+            {activeView === 'collections' && (
+              <button className="btn btn-secondary btn-ds" type="button">
+                <span className="btn-ds__value">Добавить коллекцию</span>
+                <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>
+              </button>
+            )}
+            {activeView === 'moodboard' && (
+              <FilterTabs
+                ariaLabel="Фильтрация мудборда"
+                items={moodboardTabs}
+                activeKey={moodboardFilter}
+                onChange={setMoodboardFilter}
+              />
+            )}
+            {activeView === 'settings' && (
+              <FilterTabs
+                ariaLabel="Разделы настроек"
+                items={settingsTabs}
+                activeKey={settingsFilter}
+                onChange={setSettingsFilter}
+              />
+            )}
+            {activeView === 'add' && (
+              <div className="arc2-navbar-action-group">
+                <button className="btn btn-outline btn-ds" type="button" onClick={() => navigate('/gallery')}>
+                  <span className="btn-ds__value">Отмена</span>
+                </button>
+                <button className="btn btn-success btn-ds" type="button">
+                  <span className="btn-ds__value">Добавить</span>
+                  <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>
+                </button>
+              </div>
+            )}
+            {activeView === 'collectionDetail' && (
+              <div className="arc2-navbar-collection-detail">
+                <div className="arc2-navbar-collection-detail-left">
+                  <button
+                    className="btn btn-outline btn-icon-only"
+                    type="button"
+                    aria-label="Назад"
+                    onClick={() => navigate('/collections')}
+                  >
+                    <span
+                      className="btn-icon-only__glyph arc2-icon-chevron arc2-chevron-point-left"
+                      aria-hidden="true"
+                    ></span>
+                  </button>
+                  <h1 className="h1 arc2-navbar-title">Коллекция: «Название коллекции»</h1>
+                  <button className="btn btn-ghost btn-icon-only" type="button" aria-label="Редактировать коллекцию">
+                    <span className="btn-icon-only__glyph arc2-icon-copy" aria-hidden="true"></span>
+                  </button>
+                </div>
+                <FilterTabs
+                  ariaLabel="Фильтрация карточек коллекции"
+                  items={galleryTabs}
+                  activeKey={galleryFilter}
+                  onChange={setGalleryFilter}
+                />
+              </div>
+            )}
+            {activeView === 'editCardDetail' && (
+              <div className="arc2-navbar-edit-detail">
+                <h1 className="h1 arc2-navbar-title">Изменить карточку</h1>
+                <div className="arc2-navbar-action-group">
+                  <button className="btn btn-outline btn-ds" type="button" onClick={() => navigate('/gallery')}>
+                    <span className="btn-ds__value">Отмена</span>
+                  </button>
+                  <button className="btn btn-success btn-ds" type="button">
+                    <span className="btn-ds__value">Сохранить изменения</span>
+                    <span className="btn-ds__icon arc2-icon-save" aria-hidden="true"></span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {showAddCategoryModal ? (
+        <NewCategoryModal
+          onClose={() => setShowAddCategoryModal(false)}
+          onSubmit={async (name, colorHex) => {
+            await addCategory(name, colorHex);
+            notifyCategoriesChanged();
+            await refreshMetrics();
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function FilterTabs({
+  ariaLabel,
+  items,
+  activeKey,
+  onChange
+}: {
+  ariaLabel: string;
+  items: TabItem[];
+  activeKey: string;
+  onChange: (key: string) => void;
+}) {
+  return (
+    <div className="tabs arc2-navbar-filters" role="tablist" aria-label={ariaLabel}>
+      {items.map((item) => {
+        const isActive = item.key === activeKey;
+        return (
+          <button
+            key={item.key}
+            className={`tab-button${isActive ? ' is-active' : ''}`}
+            type="button"
+            role="tab"
+            aria-selected={isActive}
+            onClick={() => onChange(item.key)}
+          >
+            <span className={`tab-icon ${item.iconClass}`} aria-hidden="true"></span>
+            <span>{item.label}</span>
+            {typeof item.count === 'number' && <span className="tab-counter">{formatTabCount(item.count)}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function getTitle(activeView: ActiveView): string {
+  switch (activeView) {
+    case 'gallery':
+      return 'Карточки';
+    case 'tags':
+      return 'Категории и метки';
+    case 'collections':
+      return 'Коллекции';
+    case 'moodboard':
+      return 'Мудборд';
+    case 'settings':
+      return 'Настройки';
+    case 'add':
+      return 'Добавить карточки';
+    case 'collectionDetail':
+      return 'Коллекция: «Название коллекции»';
+    case 'editCardDetail':
+      return 'Изменить карточку';
+    default:
+      return 'Карточки';
+  }
+}

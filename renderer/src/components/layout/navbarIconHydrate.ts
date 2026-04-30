@@ -1,0 +1,161 @@
+/**
+ * Подставляет в узлы `arc2-icon-*` inline-SVG из `public/ui/icons/`:
+ * `stroke`/`fill` с белого переводятся в `currentColor`, чтобы работали токены родителя.
+ */
+const ICON_DIR = '/ui/icons/';
+
+type IconKey =
+  | 'search'
+  | 'close'
+  | 'plus'
+  | 'images'
+  | 'image'
+  | 'play'
+  | 'whiteboard'
+  | 'hardDrive'
+  | 'pieChart'
+  | 'history'
+  | 'copy'
+  | 'save'
+  | 'chevron'
+  | 'arrowUp'
+  | 'arrowDown'
+  | 'trash';
+
+const ICON_FILES: Record<IconKey, string> = {
+  search: 'search_m.svg',
+  close: 'close_m.svg',
+  plus: 'plus_m.svg',
+  images: 'images_m.svg',
+  image: 'image_m.svg',
+  play: 'play_m.svg',
+  whiteboard: 'whiteboard_m.svg',
+  hardDrive: 'hard-drive_m.svg',
+  pieChart: 'pie-chart_m.svg',
+  history: 'history_m.svg',
+  copy: 'copy_m.svg',
+  save: 'save_m.svg',
+  chevron: 'chevron_m.svg',
+  arrowUp: 'arrow-up_s.svg',
+  arrowDown: 'arrow-down_s.svg',
+  trash: 'trash_m.svg'
+};
+
+const ICON_CLASS_TO_KEY: Record<string, IconKey> = {
+  arc2_icon_search: 'search',
+  arc2_icon_close: 'close',
+  arc2_icon_plus: 'plus',
+  arc2_icon_images: 'images',
+  arc2_icon_image: 'image',
+  arc2_icon_play: 'play',
+  arc2_icon_whiteboard: 'whiteboard',
+  arc2_icon_hard_drive: 'hardDrive',
+  arc2_icon_pie_chart: 'pieChart',
+  arc2_icon_history: 'history',
+  arc2_icon_copy: 'copy',
+  arc2_icon_save: 'save',
+  arc2_icon_chevron: 'chevron',
+  arc2_icon_arrow_up: 'arrowUp',
+  arc2_icon_arrow_down: 'arrowDown',
+  arc2_icon_trash: 'trash'
+};
+
+const ICON_SELECTOR =
+  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-trash';
+
+const svgMarkupCache = new Map<string, string>();
+let preloadPromise: Promise<void> | null = null;
+
+let idUniq = 0;
+function uniquifySvgIds(svgText: string): string {
+  const sfx = `i${++idUniq}`;
+  return svgText
+    .replace(/\bid="([^"]+)"/g, (_, id: string) => `id="${id}-${sfx}"`)
+    .replace(/url\(#([^)]+)\)/g, (_, ref: string) => `url(#${ref}-${sfx})`);
+}
+
+function normalizeSvgForTokens(svgText: string): string {
+  return svgText
+    .replace(/<\?xml[^?]*\?>/gi, '')
+    .replace(/stroke="white"/gi, 'stroke="currentColor"')
+    .replace(/stroke='white'/gi, "stroke='currentColor'")
+    .replace(/stroke="#ffffff"/gi, 'stroke="currentColor"')
+    .replace(/stroke="#FFFFFF"/gi, 'stroke="currentColor"')
+    .replace(/stroke="#fff"/gi, 'stroke="currentColor"')
+    .replace(/stroke="#FFF"/gi, 'stroke="currentColor"')
+    .replace(/fill="white"/gi, 'fill="currentColor"')
+    .replace(/fill='white'/gi, "fill='currentColor'")
+    .replace(/fill="#ffffff"/gi, 'fill="currentColor"')
+    .replace(/fill="#FFFFFF"/gi, 'fill="currentColor"')
+    .replace(/fill="#fff"/gi, 'fill="currentColor"')
+    .replace(/fill="#FFF"/gi, 'fill="currentColor"');
+}
+
+function iconUrl(file: string): string {
+  const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : '/';
+  const normalized = base.endsWith('/') ? base.slice(0, -1) : base;
+  return `${normalized}${ICON_DIR}${file}`;
+}
+
+async function ensureSvgMarkup(file: string): Promise<string | null> {
+  const cached = svgMarkupCache.get(file);
+  if (cached) return cached;
+  try {
+    const res = await fetch(iconUrl(file));
+    if (!res.ok) return null;
+    const raw = (await res.text()).trim();
+    const normalized = normalizeSvgForTokens(raw);
+    svgMarkupCache.set(file, normalized);
+    return normalized;
+  } catch {
+    return null;
+  }
+}
+
+function preloadAllIcons(): Promise<void> {
+  if (preloadPromise) return preloadPromise;
+  const files = [...new Set(Object.values(ICON_FILES))];
+  preloadPromise = Promise.all(files.map((f) => ensureSvgMarkup(f))).then(() => undefined);
+  return preloadPromise;
+}
+
+function classToIconKey(element: HTMLElement): IconKey | null {
+  for (const className of element.classList) {
+    if (!className.startsWith('arc2-icon-')) continue;
+    const key = className.replace(/-/g, '_');
+    const mapped = ICON_CLASS_TO_KEY[key];
+    if (mapped) return mapped;
+  }
+  return null;
+}
+
+function injectSvgMarkup(host: HTMLElement, normalizedMarkup: string, file: string): void {
+  host.innerHTML = uniquifySvgIds(normalizedMarkup);
+  const svg = host.querySelector('svg');
+  if (!svg) return;
+  svg.classList.add('arc-navbar-icon-svg');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.removeAttribute('width');
+  svg.removeAttribute('height');
+  host.dataset.arc2IconFile = file;
+}
+
+/** Асинхронно: дожидается кэша файлов, затем вставляет SVG с currentColor. */
+export async function hydrateArc2NavbarIcons(scope: ParentNode = document): Promise<void> {
+  await preloadAllIcons();
+
+  const nodes = scope.querySelectorAll(ICON_SELECTOR);
+  for (const node of nodes) {
+    if (!(node instanceof HTMLElement)) continue;
+    const iconKey = classToIconKey(node);
+    if (!iconKey) continue;
+    const file = ICON_FILES[iconKey];
+    if (!file) continue;
+    if (node.dataset.arc2IconFile === file && node.querySelector(':scope > svg.arc-navbar-icon-svg')) {
+      continue;
+    }
+    const normalized = svgMarkupCache.get(file);
+    if (!normalized) continue;
+    injectSvgMarkup(node, normalized, file);
+  }
+}
