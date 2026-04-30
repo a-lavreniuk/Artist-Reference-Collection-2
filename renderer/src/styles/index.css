@@ -215,7 +215,7 @@ button.color-swatch-inline:disabled {
 .arc2-tag-modal-preview-wrap {
   width: 128px;
   height: 128px;
-  border-radius: var(--radius-s);
+  border-radius: 4px;
   overflow: hidden;
   border: 1px solid var(--surface-border-default);
   background: var(--gray-900);

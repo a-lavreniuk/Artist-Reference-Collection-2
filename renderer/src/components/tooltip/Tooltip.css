@@ -1,0 +1,91 @@
+/* Tooltip (ARC-2): raised surface без тени; не конфликтует с .tooltip из arc-2-ui.css */
+
+.arc2-tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.arc2-tooltip {
+  position: fixed;
+  z-index: 10040;
+  font-family: "Google Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: var(--typo-p-s-size);
+  line-height: var(--typo-p-s-line);
+  font-weight: var(--typo-p-s-weight);
+  color: var(--ui-text-primary);
+  white-space: normal;
+  word-wrap: break-word;
+  pointer-events: none;
+  box-sizing: border-box;
+  overflow: visible;
+  opacity: 0;
+}
+
+.arc2-tooltip--variant-default {
+  max-width: 192px;
+}
+
+.arc2-tooltip--variant-rich {
+  max-width: 256px;
+}
+
+.arc2-tooltip__inner {
+  padding: var(--s-2);
+  background: var(--raised-bg);
+  border: 1px solid var(--surface-border-raised);
+  border-radius: var(--radius-s);
+  box-shadow: none;
+  min-width: 0;
+}
+
+.arc2-tooltip__arrow {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.arc2-tooltip__arrow-fill {
+  fill: var(--raised-bg);
+}
+
+.arc2-tooltip--arrow-edge-bottom .arc2-tooltip__arrow {
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.arc2-tooltip--arrow-edge-top .arc2-tooltip__arrow {
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(180deg);
+}
+
+.arc2-tooltip--arrow-edge-right .arc2-tooltip__arrow {
+  right: -6px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+}
+
+.arc2-tooltip--arrow-edge-left .arc2-tooltip__arrow {
+  left: -6px;
+  top: 50%;
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.arc2-tooltip--no-arrow .arc2-tooltip__arrow {
+  display: none;
+}
+
+/* duration + easing уже в --transition-fast (150ms ease); второй timing-function ломает shorthand и оставляет opacity: 0 */
+.arc2-tooltip.arc2-tooltip--placed {
+  animation: arc2-tooltip-fade-in var(--transition-fast) forwards;
+}
+
+@keyframes arc2-tooltip-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

@@ -1,9 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CategoryRecord, CategoryWeight, TagRecord } from '../../services/db';
 import CategoryColorModal from '../layout/CategoryColorModal';
 import ConfirmDeleteCategoryModal from '../layout/ConfirmDeleteCategoryModal';
 import { hydrateArc2NavbarIcons } from '../layout/navbarIconHydrate';
 import TagCategoryDropSurface from './TagCategoryDropSurface';
+import { Tooltip } from '../tooltip/Tooltip';
+import { TagTooltipBody } from '../tooltip/TagTooltipBody';
 import { normalizeHex } from '../../utils/colorPicker';
 
 const WEIGHT_OPTIONS: Array<{ key: CategoryWeight; label: string }> = [
@@ -280,18 +282,24 @@ export default function CategoryPanel({
               <p className="hint">В этой категории пока нет меток.</p>
             ) : (
               tags.map((tag) => {
+                const hasTipText = Boolean(tag.description?.trim());
+                const hasTipImage = Boolean(tag.tooltipImageDataUrl?.startsWith('data:image/'));
+                const canShowTooltip = hasTipText || hasTipImage;
+                /** Пока метку переносят, не вешаем кастомный tooltip (избегаем всплытия на исходном месте). */
+                const useCustomTooltip = canShowTooltip && draggingTagId !== tag.id;
+
                 const hintParts = [tag.description?.trim()].filter(Boolean) as string[];
                 if (tag.tooltipImageDataUrl) {
                   hintParts.push('Есть изображение для подсказки');
                 }
                 const titleHint = hintParts.length ? hintParts.join(' — ') : 'Открыть настройки метки';
-                return (
+
+                const chip = (
                   <button
-                    key={tag.id}
                     type="button"
                     className={`chip${draggingTagId === tag.id ? ' arc2-tag-chip--dragging' : ''}`}
                     draggable={!busy}
-                    title={titleHint}
+                    title={!canShowTooltip ? titleHint : undefined}
                     aria-label={`Редактировать метку «${tag.name}»`}
                     aria-grabbed={draggingTagId === tag.id}
                     onClick={() => {
@@ -314,6 +322,28 @@ export default function CategoryPanel({
                     <span>{tag.name}</span>
                     <span className="chip-count">{tag.usageCount}</span>
                   </button>
+                );
+
+                return (
+                  <Fragment key={tag.id}>
+                    {useCustomTooltip ? (
+                      <Tooltip
+                        content={
+                          <TagTooltipBody
+                            description={tag.description}
+                            imageDataUrl={tag.tooltipImageDataUrl}
+                          />
+                        }
+                        delay={1000}
+                        position="top"
+                        variant="rich"
+                      >
+                        {chip}
+                      </Tooltip>
+                    ) : (
+                      chip
+                    )}
+                  </Fragment>
                 );
               })
             )}

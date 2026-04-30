@@ -1,0 +1,31 @@
+.arc2-tag-tooltip {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.arc2-tag-tooltip--row {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.arc2-tag-tooltip__image {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 4px;
+  background: var(--gray-900);
+  display: block;
+}
+
+.arc2-tag-tooltip__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  font-size: var(--typo-p-s-size);
+  line-height: var(--typo-p-s-line);
+  color: inherit;
+}
