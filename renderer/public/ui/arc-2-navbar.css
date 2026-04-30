@@ -78,11 +78,30 @@ body::-webkit-scrollbar {
   min-height: 40px;
 }
 
+.arc2-navbar-page .arc2-navbar-ui-kit-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--s-3);
+  margin-left: auto;
+}
+
+.arc2-navbar-page .arc2-navbar-ui-kit-controls .control-group {
+  display: grid;
+  gap: var(--s-1);
+}
+
+.arc2-navbar-page .arc2-navbar-ui-kit-tabs {
+  flex-shrink: 0;
+}
+
 .arc2-navbar-page .arc2-navbar-secondary-actions {
   margin-left: auto;
   display: flex;
   align-items: center;
 }
+
 
 .arc2-navbar-page .arc2-navbar-action-group {
   display: flex;

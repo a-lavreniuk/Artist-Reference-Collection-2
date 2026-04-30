@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import CategoryPanel from '../components/tags/CategoryPanel';
 import TagSettingsModal, { type TagSettingsModalState } from '../components/tags/TagSettingsModal';
 import {
+  ARC2_CARDS_CHANGED_EVENT,
   ARC2_CATEGORIES_CHANGED_EVENT,
   ARC2_TAGS_CHANGED_EVENT,
   deleteCategory,
@@ -44,10 +45,12 @@ export default function TagsPage() {
     const onRefresh = () => void load();
     window.addEventListener(ARC2_CATEGORIES_CHANGED_EVENT, onRefresh);
     window.addEventListener(ARC2_TAGS_CHANGED_EVENT, onRefresh);
+    window.addEventListener(ARC2_CARDS_CHANGED_EVENT, onRefresh);
     window.addEventListener('storage', onRefresh);
     return () => {
       window.removeEventListener(ARC2_CATEGORIES_CHANGED_EVENT, onRefresh);
       window.removeEventListener(ARC2_TAGS_CHANGED_EVENT, onRefresh);
+      window.removeEventListener(ARC2_CARDS_CHANGED_EVENT, onRefresh);
       window.removeEventListener('storage', onRefresh);
     };
   }, [load]);

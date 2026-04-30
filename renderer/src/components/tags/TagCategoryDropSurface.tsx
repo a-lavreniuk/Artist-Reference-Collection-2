@@ -11,7 +11,7 @@ type Props = {
 };
 
 /**
- * Зона сброса метки в категорию (HTML5 DnD). Логика согласована с arc/renderer CategorySection.
+ * Зона сброса метки в категорию (HTML5 DnD). Поведение согласовано с CategorySection.
  */
 export default function TagCategoryDropSurface({
   categoryId,

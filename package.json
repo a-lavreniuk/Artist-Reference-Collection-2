@@ -1,8 +1,8 @@
 {
   "name": "artist-reference-collection-2",
   "version": "0.1.0",
-  "description": "ARC 2 clean bootstrap",
-  "main": "main/main.js",
+  "description": "ARC — десктопное приложение для организации визуальных материалов",
+  "main": "main/index.js",
   "scripts": {
     "build:main": "tsc -p tsconfig.main.json",
     "build:preload": "tsc -p tsconfig.preload.json",

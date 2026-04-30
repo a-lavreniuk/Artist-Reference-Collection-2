@@ -1,3 +1,4 @@
+import type { ArcMetadataV1, CardRecord, CollectionRecord } from './arcSchema';
 import { normalizeHex } from '../utils/colorPicker';
 
 export type NavbarMetrics = {
@@ -26,18 +27,10 @@ export type TagRecord = {
   name: string;
   usageCount: number;
   description?: string;
-  /** data:image/* для подсказки при наведении; хранится в localStorage */
   tooltipImageDataUrl?: string;
 };
 
-type CardRecord = {
-  id: string;
-  type?: 'image' | 'video';
-};
-
-type CollectionRecord = {
-  id: string;
-};
+export type { CardRecord, CollectionRecord } from './arcSchema';
 
 const STORAGE_KEYS = {
   cards: 'arc2.cards',
@@ -49,17 +42,135 @@ const STORAGE_KEYS = {
 
 export const ARC2_CATEGORIES_CHANGED_EVENT = 'arc2:categories-changed';
 export const ARC2_TAGS_CHANGED_EVENT = 'arc2:tags-changed';
+export const ARC2_CARDS_CHANGED_EVENT = 'arc2:cards-changed';
+export const ARC2_COLLECTIONS_CHANGED_EVENT = 'arc2:collections-changed';
+
+function hasArcApi(): boolean {
+  return typeof window !== 'undefined' && typeof window.arc !== 'undefined';
+}
+
+/** После смены пути библиотеки в настройках */
+export function invalidateLibraryCache(): void {
+  metadataBlob = null;
+  fileBackendResolved = false;
+}
+
+let metadataBlob: ArcMetadataV1 | null = null;
+let fileBackendResolved = false;
+
+function emptyMetadata(): ArcMetadataV1 {
+  return {
+    version: 1,
+    categories: [],
+    tags: [],
+    cards: [],
+    collections: [],
+    moodboardCardIds: []
+  };
+}
+
+async function resolveBackend(): Promise<'file' | 'local'> {
+  if (!hasArcApi()) {
+    fileBackendResolved = true;
+    return 'local';
+  }
+  if (fileBackendResolved && metadataBlob) {
+    return 'file';
+  }
+  if (fileBackendResolved && !metadataBlob) {
+    return 'local';
+  }
+
+  const root = await window.arc!.getLibraryPath();
+  if (!root) {
+    fileBackendResolved = true;
+    metadataBlob = null;
+    return 'local';
+  }
+
+  let raw = await window.arc!.readMetadata();
+  if (!raw) {
+    raw = emptyMetadata();
+  }
+  metadataBlob = raw as ArcMetadataV1;
+  normalizeMetadataShape(metadataBlob);
+  await migrateLocalIntoFileIfNeeded();
+  fileBackendResolved = true;
+  return 'file';
+}
+
+function normalizeMetadataShape(meta: ArcMetadataV1): void {
+  if (!Array.isArray(meta.categories)) meta.categories = [];
+  if (!Array.isArray(meta.tags)) meta.tags = [];
+  if (!Array.isArray(meta.cards)) meta.cards = [];
+  if (!Array.isArray(meta.collections)) meta.collections = [];
+  if (!Array.isArray(meta.moodboardCardIds)) meta.moodboardCardIds = [];
+}
+
+async function persistBlob(): Promise<void> {
+  if (!hasArcApi() || !metadataBlob) return;
+  await window.arc!.writeMetadata(metadataBlob);
+}
+
+async function migrateLocalIntoFileIfNeeded(): Promise<void> {
+  if (!metadataBlob || !hasArcApi()) return;
+
+  const fileCatsEmpty = metadataBlob.categories.length === 0;
+  const fileTagsEmpty = metadataBlob.tags.length === 0;
+  const lsCats = safeReadArray<unknown>(STORAGE_KEYS.categories);
+  const lsTags = safeReadArray<unknown>(STORAGE_KEYS.tags);
+
+  if (!(fileCatsEmpty && fileTagsEmpty)) return;
+  if (lsCats.length === 0 && lsTags.length === 0) return;
+
+  metadataBlob.categories = lsCats;
+  metadataBlob.tags = lsTags;
+
+  const lsCols = safeReadArray<unknown>(STORAGE_KEYS.collections);
+  if (metadataBlob.collections.length === 0 && lsCols.length > 0) {
+    metadataBlob.collections = lsCols
+      .map((c) => normalizeCollectionRecord(c))
+      .filter((c): c is CollectionRecord => c !== null);
+  }
+
+  const lsMb = safeReadArray<{ id?: string }>(STORAGE_KEYS.moodboard);
+  if (metadataBlob.moodboardCardIds.length === 0 && lsMb.length > 0) {
+    metadataBlob.moodboardCardIds = lsMb.map((x) => x.id).filter((id): id is string => typeof id === 'string');
+  }
+
+  recomputeTagUsageCounts();
+
+  await persistBlob();
+
+  try {
+    window.localStorage.removeItem(STORAGE_KEYS.categories);
+    window.localStorage.removeItem(STORAGE_KEYS.tags);
+    window.localStorage.removeItem(STORAGE_KEYS.cards);
+    window.localStorage.removeItem(STORAGE_KEYS.collections);
+    window.localStorage.removeItem(STORAGE_KEYS.moodboard);
+  } catch {
+    /* ignore */
+  }
+}
+
+function notifyCardsChanged(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(ARC2_CARDS_CHANGED_EVENT));
+}
+
+function notifyCollectionsChanged(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(ARC2_COLLECTIONS_CHANGED_EVENT));
+}
 
 function safeReadArray<T>(key: string): T[] {
   if (typeof window === 'undefined') {
     return [];
   }
-
   const raw = window.localStorage.getItem(key);
   if (!raw) {
     return [];
   }
-
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as T[]) : [];
@@ -104,13 +215,33 @@ function normalizeCategoryRecord(item: unknown, index: number): CategoryRecord {
   return { id, name, colorHex, weight, sortIndex, createdAt };
 }
 
-function readCategories(): CategoryRecord[] {
+function readCategoriesLocal(): CategoryRecord[] {
   const raw = safeReadArray<unknown>(STORAGE_KEYS.categories);
   return raw.map((item, index) => normalizeCategoryRecord(item, index));
 }
 
-function persistCategories(list: CategoryRecord[]): void {
-  safeWriteArray(STORAGE_KEYS.categories, list);
+function migrateCategoriesIfNeededLocal(list: CategoryRecord[]): void {
+  const raw = safeReadArray<unknown>(STORAGE_KEYS.categories);
+  if (!Array.isArray(raw) || raw.length !== list.length) {
+    safeWriteArray(STORAGE_KEYS.categories, list);
+    return;
+  }
+  let needs = false;
+  for (let i = 0; i < raw.length; i++) {
+    const o = raw[i];
+    if (!o || typeof o !== 'object') {
+      needs = true;
+      break;
+    }
+    const rec = o as Record<string, unknown>;
+    if (typeof rec.colorHex !== 'string' || typeof rec.weight !== 'string' || typeof rec.sortIndex !== 'number') {
+      needs = true;
+      break;
+    }
+  }
+  if (needs) {
+    safeWriteArray(STORAGE_KEYS.categories, list);
+  }
 }
 
 function normalizeTagRecord(item: unknown): TagRecord | null {
@@ -139,7 +270,7 @@ function normalizeTagRecord(item: unknown): TagRecord | null {
   };
 }
 
-function readTags(): TagRecord[] {
+function readTagsLocal(): TagRecord[] {
   const raw = safeReadArray<unknown>(STORAGE_KEYS.tags);
   const out: TagRecord[] = [];
   for (const item of raw) {
@@ -149,39 +280,151 @@ function readTags(): TagRecord[] {
   return out;
 }
 
-function persistTags(list: TagRecord[]): void {
-  safeWriteArray(STORAGE_KEYS.tags, list);
+async function readCategoriesUnified(): Promise<CategoryRecord[]> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    return metadataBlob.categories.map((item, index) => normalizeCategoryRecord(item, index));
+  }
+  const list = readCategoriesLocal();
+  migrateCategoriesIfNeededLocal(list);
+  return list;
 }
 
-function migrateCategoriesIfNeeded(list: CategoryRecord[]): void {
-  const raw = safeReadArray<unknown>(STORAGE_KEYS.categories);
-  if (!Array.isArray(raw) || raw.length !== list.length) {
-    persistCategories(list);
+async function persistCategories(list: CategoryRecord[]): Promise<void> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    metadataBlob.categories = list;
+    await persistBlob();
+    notifyCategoriesChanged();
     return;
   }
-  let needs = false;
-  for (let i = 0; i < raw.length; i++) {
-    const o = raw[i];
-    if (!o || typeof o !== 'object') {
-      needs = true;
-      break;
-    }
-    const rec = o as Record<string, unknown>;
-    if (typeof rec.colorHex !== 'string' || typeof rec.weight !== 'string' || typeof rec.sortIndex !== 'number') {
-      needs = true;
-      break;
+  safeWriteArray(STORAGE_KEYS.categories, list);
+  notifyCategoriesChanged();
+}
+
+async function persistTags(list: TagRecord[]): Promise<void> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    metadataBlob.tags = list;
+    recomputeTagUsageCounts();
+    await persistBlob();
+    notifyTagsChanged();
+    return;
+  }
+  safeWriteArray(STORAGE_KEYS.tags, list);
+  notifyTagsChanged();
+}
+
+function tagsFromBlob(): TagRecord[] {
+  if (!metadataBlob) return [];
+  const out: TagRecord[] = [];
+  for (const item of metadataBlob.tags) {
+    const t = normalizeTagRecord(item);
+    if (t) out.push(t);
+  }
+  return out;
+}
+
+async function readTagsUnified(): Promise<TagRecord[]> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    return tagsFromBlob();
+  }
+  return readTagsLocal();
+}
+
+function recomputeTagUsageCounts(): void {
+  if (!metadataBlob) return;
+  const tags = tagsFromBlob();
+  const counts = new Map<string, number>();
+  for (const card of metadataBlob.cards) {
+    for (const tid of card.tagIds) {
+      counts.set(tid, (counts.get(tid) ?? 0) + 1);
     }
   }
-  if (needs) {
-    persistCategories(list);
-  }
+  metadataBlob.tags = tags.map((t) => ({ ...t, usageCount: counts.get(t.id) ?? 0 }));
+}
+
+function normalizeCardRecord(item: unknown): CardRecord | null {
+  if (!item || typeof item !== 'object') return null;
+  const r = item as Record<string, unknown>;
+  const id = typeof r.id === 'string' ? r.id : '';
+  const type = r.type === 'video' ? 'video' : 'image';
+  const addedAt = typeof r.addedAt === 'string' ? r.addedAt : new Date().toISOString();
+  const originalRelativePath = typeof r.originalRelativePath === 'string' ? r.originalRelativePath : '';
+  const thumbRelativePath =
+    typeof r.thumbRelativePath === 'string' ? r.thumbRelativePath : originalRelativePath;
+  if (!id || !originalRelativePath) return null;
+  const tagIds = Array.isArray(r.tagIds)
+    ? r.tagIds.filter((x): x is string => typeof x === 'string')
+    : [];
+  const collectionIds = Array.isArray(r.collectionIds)
+    ? r.collectionIds.filter((x): x is string => typeof x === 'string')
+    : [];
+  const fileSize = typeof r.fileSize === 'number' ? r.fileSize : undefined;
+  const description =
+    typeof r.description === 'string' && r.description.trim() ? String(r.description).trim() : undefined;
+  return {
+    id,
+    type,
+    addedAt,
+    originalRelativePath,
+    thumbRelativePath,
+    tagIds,
+    collectionIds,
+    ...(description ? { description } : {}),
+    ...(fileSize !== undefined ? { fileSize } : {})
+  };
+}
+
+function normalizeCollectionRecord(item: unknown): CollectionRecord | null {
+  if (!item || typeof item !== 'object') return null;
+  const r = item as Record<string, unknown>;
+  const id = typeof r.id === 'string' ? r.id : '';
+  const name = typeof r.name === 'string' ? r.name.trim() : '';
+  const createdAt = typeof r.createdAt === 'string' ? r.createdAt : new Date().toISOString();
+  if (!id) return null;
+  return { id, name: name || 'Без названия', createdAt };
+}
+
+export async function isLibraryConfigured(): Promise<boolean> {
+  if (!hasArcApi()) return false;
+  const root = await window.arc!.getLibraryPath();
+  return Boolean(root);
 }
 
 export async function getNavbarMetrics(): Promise<NavbarMetrics> {
-  const cards = safeReadArray<CardRecord>(STORAGE_KEYS.cards);
-  const collections = safeReadArray<CollectionRecord>(STORAGE_KEYS.collections);
-  const moodboardCards = safeReadArray<CardRecord>(STORAGE_KEYS.moodboard);
-  const categories = readCategories();
+  const b = await resolveBackend();
+  let cards: CardRecord[] = [];
+  let collections: CollectionRecord[] = [];
+  let moodboardIds: string[] = [];
+  let categories: CategoryRecord[] = [];
+
+  if (b === 'file' && metadataBlob) {
+    cards = metadataBlob.cards.map(normalizeCardRecord).filter((c): c is CardRecord => c !== null);
+    collections = metadataBlob.collections
+      .map(normalizeCollectionRecord)
+      .filter((c): c is CollectionRecord => c !== null);
+    moodboardIds = [...metadataBlob.moodboardCardIds];
+    categories = metadataBlob.categories.map((item, index) => normalizeCategoryRecord(item, index));
+  } else {
+    cards = safeReadArray<{ id: string; type?: string }>(STORAGE_KEYS.cards).map((raw, i) => ({
+      id: typeof raw.id === 'string' ? raw.id : `c-${i}`,
+      type: raw.type === 'video' ? ('video' as const) : ('image' as const),
+      addedAt: new Date().toISOString(),
+      originalRelativePath: 'legacy',
+      thumbRelativePath: 'legacy',
+      tagIds: [],
+      collectionIds: []
+    }));
+    collections = safeReadArray<unknown>(STORAGE_KEYS.collections)
+      .map(normalizeCollectionRecord)
+      .filter((c): c is CollectionRecord => c !== null);
+    moodboardIds = safeReadArray<{ id?: string }>(STORAGE_KEYS.moodboard)
+      .map((x) => x.id)
+      .filter((id): id is string => typeof id === 'string');
+    categories = readCategoriesLocal();
+  }
 
   const imageCards = cards.filter((card) => card.type === 'image').length;
   const videoCards = cards.filter((card) => card.type === 'video').length;
@@ -191,14 +434,17 @@ export async function getNavbarMetrics(): Promise<NavbarMetrics> {
     imageCards,
     videoCards,
     totalCollections: collections.length,
-    moodboardCards: moodboardCards.length,
+    moodboardCards: moodboardIds.length,
     totalCategories: categories.length
   };
 }
 
 export async function getAllCategories(): Promise<CategoryRecord[]> {
-  const list = readCategories();
-  migrateCategoriesIfNeeded(list);
+  const list = await readCategoriesUnified();
+  const b = await resolveBackend();
+  if (b === 'local') {
+    migrateCategoriesIfNeededLocal(list);
+  }
   return [...list].sort((a, b) => a.sortIndex - b.sortIndex || a.name.localeCompare(b.name, 'ru'));
 }
 
@@ -208,7 +454,7 @@ export async function addCategory(name: string, colorHex: string): Promise<Categ
     throw new Error('Название категории не может быть пустым');
   }
   const hex = normalizeHex(colorHex) ?? '#EAB308';
-  const list = readCategories();
+  const list = await readCategoriesUnified();
   const maxSort = list.reduce((m, c) => Math.max(m, c.sortIndex), -1);
   const created: CategoryRecord = {
     id: newId(),
@@ -218,7 +464,7 @@ export async function addCategory(name: string, colorHex: string): Promise<Categ
     sortIndex: maxSort + 1,
     createdAt: new Date().toISOString()
   };
-  persistCategories([...list, created]);
+  await persistCategories([...list, created]);
   return created;
 }
 
@@ -227,8 +473,8 @@ export async function updateCategoryName(id: string, name: string): Promise<void
   if (!trimmed) {
     throw new Error('Название не может быть пустым');
   }
-  const list = readCategories();
-  persistCategories(list.map((c) => (c.id === id ? { ...c, name: trimmed } : c)));
+  const list = await readCategoriesUnified();
+  await persistCategories(list.map((c) => (c.id === id ? { ...c, name: trimmed } : c)));
   notifyCategoriesChanged();
 }
 
@@ -237,14 +483,14 @@ export async function updateCategoryColorHex(id: string, colorHex: string): Prom
   if (!hex) {
     throw new Error('Некорректный цвет');
   }
-  const list = readCategories();
-  persistCategories(list.map((c) => (c.id === id ? { ...c, colorHex: hex } : c)));
+  const list = await readCategoriesUnified();
+  await persistCategories(list.map((c) => (c.id === id ? { ...c, colorHex: hex } : c)));
   notifyCategoriesChanged();
 }
 
 export async function updateCategoryWeight(id: string, weight: CategoryWeight): Promise<void> {
-  const list = readCategories();
-  persistCategories(list.map((c) => (c.id === id ? { ...c, weight } : c)));
+  const list = await readCategoriesUnified();
+  await persistCategories(list.map((c) => (c.id === id ? { ...c, weight } : c)));
   notifyCategoriesChanged();
 }
 
@@ -257,25 +503,25 @@ export async function moveCategory(id: string, direction: -1 | 1): Promise<void>
   }
   const a = sorted[index];
   const b = sorted[swapIndex];
-  const list = readCategories().map((c) => {
+  const list = (await readCategoriesUnified()).map((c) => {
     if (c.id === a.id) return { ...c, sortIndex: b.sortIndex };
     if (c.id === b.id) return { ...c, sortIndex: a.sortIndex };
     return c;
   });
-  persistCategories(list);
+  await persistCategories(list);
   notifyCategoriesChanged();
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  const tags = readTags().filter((t) => t.categoryId !== id);
-  persistTags(tags);
-  persistCategories(readCategories().filter((c) => c.id !== id));
+  const tags = (await readTagsUnified()).filter((t) => t.categoryId !== id);
+  await persistTags(tags);
+  await persistCategories((await readCategoriesUnified()).filter((c) => c.id !== id));
   notifyTagsChanged();
   notifyCategoriesChanged();
 }
 
 export async function getTagsByCategory(categoryId: string): Promise<TagRecord[]> {
-  return readTags()
+  return (await readTagsUnified())
     .filter((t) => t.categoryId === categoryId)
     .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 }
@@ -289,10 +535,14 @@ export async function addTag(
   if (!trimmed) {
     throw new Error('Название метки не может быть пустым');
   }
-  if (!readCategories().some((c) => c.id === categoryId)) {
+  if (!(await readCategoriesUnified()).some((c) => c.id === categoryId)) {
     throw new Error('Категория не найдена');
   }
-  const tags = readTags();
+  const tags = await readTagsUnified();
+  const dup = tags.some((t) => t.categoryId === categoryId && t.name.trim().toLowerCase() === trimmed.toLowerCase());
+  if (dup) {
+    throw new Error(`Такая метка уже есть в категории`);
+  }
   const desc = extras?.description?.trim();
   const img = extras?.tooltipImageDataUrl;
   const created: TagRecord = {
@@ -303,8 +553,7 @@ export async function addTag(
     ...(desc ? { description: desc } : {}),
     ...(img && img.startsWith('data:image/') ? { tooltipImageDataUrl: img } : {})
   };
-  persistTags([...tags, created]);
-  notifyTagsChanged();
+  await persistTags([...tags, created]);
   return created;
 }
 
@@ -317,12 +566,12 @@ export async function updateTag(
     tooltipImageDataUrl?: string;
   }
 ): Promise<void> {
-  const tags = readTags();
+  const tags = await readTagsUnified();
   const tag = tags.find((t) => t.id === tagId);
   if (!tag) {
     throw new Error('Метка не найдена');
   }
-  if (!readCategories().some((c) => c.id === patch.categoryId)) {
+  if (!(await readCategoriesUnified()).some((c) => c.id === patch.categoryId)) {
     throw new Error('Категория не найдена');
   }
   const trimmed = patch.name.trim();
@@ -346,25 +595,33 @@ export async function updateTag(
   } else {
     delete next.tooltipImageDataUrl;
   }
-  persistTags(tags.map((t) => (t.id === tagId ? next : t)));
+  await persistTags(tags.map((t) => (t.id === tagId ? next : t)));
   notifyTagsChanged();
 }
 
 export async function deleteTag(tagId: string): Promise<void> {
-  const tags = readTags();
+  const tags = await readTagsUnified();
   if (!tags.some((t) => t.id === tagId)) {
     throw new Error('Метка не найдена');
   }
-  persistTags(tags.filter((t) => t.id !== tagId));
+  await persistTags(tags.filter((t) => t.id !== tagId));
+  if (metadataBlob) {
+    metadataBlob.cards = metadataBlob.cards.map((c) => ({
+      ...c,
+      tagIds: c.tagIds.filter((id) => id !== tagId)
+    }));
+    await persistBlob();
+  }
   notifyTagsChanged();
+  notifyCardsChanged();
 }
 
 export async function moveTagToCategory(tagId: string, targetCategoryId: string): Promise<void> {
-  const categories = readCategories();
+  const categories = await readCategoriesUnified();
   if (!categories.some((c) => c.id === targetCategoryId)) {
     throw new Error('Категория не найдена');
   }
-  const tags = readTags();
+  const tags = await readTagsUnified();
   const tag = tags.find((t) => t.id === tagId);
   if (!tag) {
     throw new Error('Метка не найдена');
@@ -372,7 +629,7 @@ export async function moveTagToCategory(tagId: string, targetCategoryId: string)
   if (tag.categoryId === targetCategoryId) {
     return;
   }
-  persistTags(tags.map((t) => (t.id === tagId ? { ...t, categoryId: targetCategoryId } : t)));
+  await persistTags(tags.map((t) => (t.id === tagId ? { ...t, categoryId: targetCategoryId } : t)));
   notifyTagsChanged();
 }
 
@@ -388,4 +645,274 @@ export function notifyTagsChanged(): void {
     return;
   }
   window.dispatchEvent(new CustomEvent(ARC2_TAGS_CHANGED_EVENT));
+}
+
+/* --- Коллекции --- */
+
+export async function getAllCollections(): Promise<CollectionRecord[]> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    return metadataBlob.collections
+      .map(normalizeCollectionRecord)
+      .filter((c): c is CollectionRecord => c !== null)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  const ls = safeReadArray<unknown>(STORAGE_KEYS.collections);
+  return ls
+    .map(normalizeCollectionRecord)
+    .filter((c): c is CollectionRecord => c !== null)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function getCollectionById(id: string): Promise<CollectionRecord | null> {
+  const all = await getAllCollections();
+  return all.find((c) => c.id === id) ?? null;
+}
+
+export async function addCollection(name: string): Promise<CollectionRecord> {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Название коллекции не может быть пустым');
+  }
+  const b = await resolveBackend();
+  const existing = await getAllCollections();
+  if (existing.some((c) => c.name.trim().toLowerCase() === trimmed.toLowerCase())) {
+    throw new Error('Коллекция с таким названием уже есть');
+  }
+  const created: CollectionRecord = {
+    id: newId(),
+    name: trimmed,
+    createdAt: new Date().toISOString()
+  };
+
+  if (b === 'file' && metadataBlob) {
+    metadataBlob.collections = [...metadataBlob.collections, created];
+    await persistBlob();
+  } else {
+    safeWriteArray(STORAGE_KEYS.collections, [...existing, created]);
+  }
+  notifyCollectionsChanged();
+  return created;
+}
+
+export async function deleteCollection(collectionId: string): Promise<void> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    metadataBlob.collections = metadataBlob.collections.filter((c) => {
+      const n = normalizeCollectionRecord(c);
+      return n?.id !== collectionId;
+    });
+    metadataBlob.cards = metadataBlob.cards.map((c) => ({
+      ...c,
+      collectionIds: c.collectionIds.filter((id) => id !== collectionId)
+    }));
+    await persistBlob();
+  } else {
+    const cols = (await getAllCollections()).filter((c) => c.id !== collectionId);
+    safeWriteArray(STORAGE_KEYS.collections, cols);
+  }
+  notifyCollectionsChanged();
+  notifyCardsChanged();
+}
+
+export async function renameCollection(collectionId: string, name: string): Promise<void> {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('Название не может быть пустым');
+  const b = await resolveBackend();
+  const all = await getAllCollections();
+  if (all.some((c) => c.id !== collectionId && c.name.trim().toLowerCase() === trimmed.toLowerCase())) {
+    throw new Error('Коллекция с таким названием уже есть');
+  }
+
+  if (b === 'file' && metadataBlob) {
+    metadataBlob.collections = metadataBlob.collections.map((item) => {
+      const c = normalizeCollectionRecord(item);
+      if (!c || c.id !== collectionId) return item;
+      return { ...c, name: trimmed };
+    });
+    await persistBlob();
+  } else {
+    safeWriteArray(
+      STORAGE_KEYS.collections,
+      all.map((c) => (c.id === collectionId ? { ...c, name: trimmed } : c))
+    );
+  }
+  notifyCollectionsChanged();
+}
+
+/* --- Карточки --- */
+
+async function persistCards(list: CardRecord[]): Promise<void> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    metadataBlob.cards = list;
+    recomputeTagUsageCounts();
+    await persistBlob();
+    notifyCardsChanged();
+    return;
+  }
+  safeWriteArray(
+    STORAGE_KEYS.cards,
+    list.map((c) => ({ id: c.id, type: c.type }))
+  );
+  notifyCardsChanged();
+}
+
+export async function listCardsSorted(filter: 'all' | 'images' | 'videos'): Promise<CardRecord[]> {
+  const b = await resolveBackend();
+  let cards: CardRecord[] = [];
+  if (b === 'file' && metadataBlob) {
+    cards = metadataBlob.cards.map(normalizeCardRecord).filter((c): c is CardRecord => c !== null);
+  } else {
+    cards = safeReadArray<unknown>(STORAGE_KEYS.cards)
+      .map(normalizeCardRecord)
+      .filter((c): c is CardRecord => c !== null);
+  }
+  const filtered = cards.filter((c) => {
+    if (filter === 'images') return c.type === 'image';
+    if (filter === 'videos') return c.type === 'video';
+    return true;
+  });
+  return filtered.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+}
+
+export async function listCardsPage(params: {
+  offset: number;
+  limit: number;
+  filter: 'all' | 'images' | 'videos';
+}): Promise<CardRecord[]> {
+  const sorted = await listCardsSorted(params.filter);
+  return sorted.slice(params.offset, params.offset + params.limit);
+}
+
+export async function listCardsInCollection(
+  collectionId: string,
+  params: { offset: number; limit: number; filter: 'all' | 'images' | 'videos' }
+): Promise<CardRecord[]> {
+  const sorted = (await listCardsSorted(params.filter)).filter((c) => c.collectionIds.includes(collectionId));
+  return sorted.slice(params.offset, params.offset + params.limit);
+}
+
+export async function getCardById(id: string): Promise<CardRecord | null> {
+  const all = await listCardsSorted('all');
+  return all.find((c) => c.id === id) ?? null;
+}
+
+/** Число карточек в каждой коллекции (по всей библиотеке). */
+export async function getCollectionCardCounts(): Promise<Record<string, number>> {
+  const all = await listCardsSorted('all');
+  const m: Record<string, number> = {};
+  for (const c of all) {
+    for (const colId of c.collectionIds) {
+      m[colId] = (m[colId] ?? 0) + 1;
+    }
+  }
+  return m;
+}
+
+/**
+ * Карточки с пересечением меток (как в Notion — до `limit`), без текущей.
+ */
+export async function listSimilarCards(cardId: string, limit = 15): Promise<CardRecord[]> {
+  const base = await getCardById(cardId);
+  if (!base) return [];
+  const tagSet = new Set(base.tagIds);
+  if (tagSet.size === 0) return [];
+
+  const all = await listCardsSorted('all');
+  const scored = all
+    .filter((c) => c.id !== cardId && c.type === 'image')
+    .map((c) => {
+      let score = 0;
+      for (const t of c.tagIds) {
+        if (tagSet.has(t)) score++;
+      }
+      return { c, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return b.c.addedAt.localeCompare(a.c.addedAt);
+    });
+
+  return scored.slice(0, limit).map((x) => x.c);
+}
+
+export async function insertImportedCards(newCards: CardRecord[]): Promise<void> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    const existing = metadataBlob.cards.map(normalizeCardRecord).filter((c): c is CardRecord => c !== null);
+    metadataBlob.cards = [...existing, ...newCards];
+    recomputeTagUsageCounts();
+    await persistBlob();
+    notifyCardsChanged();
+    return;
+  }
+  const legacy = safeReadArray<{ id: string; type?: string }>(STORAGE_KEYS.cards);
+  safeWriteArray(STORAGE_KEYS.cards, [...legacy, ...newCards.map((c) => ({ id: c.id, type: c.type }))]);
+  notifyCardsChanged();
+}
+
+export async function updateCardPayload(
+  cardId: string,
+  patch: { tagIds?: string[]; collectionIds?: string[]; description?: string }
+): Promise<void> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    metadataBlob.cards = metadataBlob.cards.map((raw) => {
+      const c = normalizeCardRecord(raw);
+      if (!c || c.id !== cardId) return raw as CardRecord;
+      const next: CardRecord = {
+        ...c,
+        ...(patch.tagIds ? { tagIds: [...patch.tagIds] } : {}),
+        ...(patch.collectionIds ? { collectionIds: [...patch.collectionIds] } : {}),
+        ...(patch.description !== undefined
+          ? patch.description.trim()
+            ? { description: patch.description.trim() }
+            : { description: undefined }
+          : {})
+      };
+      if (patch.description !== undefined && !patch.description.trim()) {
+        delete next.description;
+      }
+      return next;
+    });
+    recomputeTagUsageCounts();
+    await persistBlob();
+    notifyCardsChanged();
+    notifyTagsChanged();
+    return;
+  }
+  notifyCardsChanged();
+}
+
+export async function deleteCard(cardId: string): Promise<void> {
+  const b = await resolveBackend();
+  let relPath: string | null = null;
+
+  if (b === 'file' && metadataBlob) {
+    const card = metadataBlob.cards.map(normalizeCardRecord).find((c) => c?.id === cardId) ?? null;
+    relPath = card?.originalRelativePath ?? null;
+    metadataBlob.cards = metadataBlob.cards.filter((raw) => {
+      const c = normalizeCardRecord(raw);
+      return c?.id !== cardId;
+    });
+    metadataBlob.moodboardCardIds = metadataBlob.moodboardCardIds.filter((id) => id !== cardId);
+    recomputeTagUsageCounts();
+    await persistBlob();
+  } else {
+    const legacy = safeReadArray<{ id: string; type?: string }>(STORAGE_KEYS.cards);
+    safeWriteArray(
+      STORAGE_KEYS.cards,
+      legacy.filter((x) => x.id !== cardId)
+    );
+    const mb = safeReadArray<{ id?: string }>(STORAGE_KEYS.moodboard).filter((x) => x.id !== cardId);
+    safeWriteArray(STORAGE_KEYS.moodboard, mb);
+  }
+
+  if (hasArcApi() && relPath) {
+    await window.arc!.deleteFileIfInsideLibrary(relPath);
+  }
+  notifyCardsChanged();
+  notifyTagsChanged();
 }

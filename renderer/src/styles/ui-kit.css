@@ -1,28 +1,4 @@
-.doc-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  background: var(--app-bg);
-}
-
-.doc-page__header {
-  padding: 8px 4px;
-}
-
-.doc-page__header h1 {
-  margin: 0;
-  font-size: 24px;
-  line-height: 28px;
-  font-weight: 500;
-}
-
-.doc-page__frame {
-  width: 100%;
-  flex: 1;
-  min-height: calc(100vh - 92px);
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  background: var(--panel-bg);
+.arc-ui-kit-route {
+  overflow: auto;
+  max-height: calc(100vh - 140px);
 }

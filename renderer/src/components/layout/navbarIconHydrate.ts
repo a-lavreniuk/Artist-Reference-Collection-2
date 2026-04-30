@@ -20,7 +20,11 @@ type IconKey =
   | 'chevron'
   | 'arrowUp'
   | 'arrowDown'
-  | 'trash';
+  | 'trash'
+  | 'bookmark'
+  | 'download'
+  | 'folderOpen'
+  | 'edit';
 
 const ICON_FILES: Record<IconKey, string> = {
   search: 'search_m.svg',
@@ -38,7 +42,11 @@ const ICON_FILES: Record<IconKey, string> = {
   chevron: 'chevron_m.svg',
   arrowUp: 'arrow-up_s.svg',
   arrowDown: 'arrow-down_s.svg',
-  trash: 'trash_m.svg'
+  trash: 'trash_m.svg',
+  bookmark: 'bookmark_m.svg',
+  download: 'download_m.svg',
+  folderOpen: 'folder-open_m.svg',
+  edit: 'edit_m.svg'
 };
 
 const ICON_CLASS_TO_KEY: Record<string, IconKey> = {
@@ -57,11 +65,15 @@ const ICON_CLASS_TO_KEY: Record<string, IconKey> = {
   arc2_icon_chevron: 'chevron',
   arc2_icon_arrow_up: 'arrowUp',
   arc2_icon_arrow_down: 'arrowDown',
-  arc2_icon_trash: 'trash'
+  arc2_icon_trash: 'trash',
+  arc2_icon_bookmark: 'bookmark',
+  arc2_icon_download: 'download',
+  arc2_icon_folder_open: 'folderOpen',
+  arc2_icon_edit: 'edit'
 };
 
 const ICON_SELECTOR =
-  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-trash';
+  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-trash, .arc2-icon-bookmark, .arc2-icon-download, .arc2-icon-folder-open, .arc2-icon-edit';
 
 const svgMarkupCache = new Map<string, string>();
 let preloadPromise: Promise<void> | null = null;
