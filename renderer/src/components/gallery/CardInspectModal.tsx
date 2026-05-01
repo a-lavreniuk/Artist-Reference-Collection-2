@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { hydrateArc2NavbarIcons } from '../layout/navbarIconHydrate';
 import type { CardRecord, CategoryRecord, TagRecord } from '../../services/db';
 import {
+  getMoodboardCardIds,
   deleteCard,
   getAllCategories,
   getAllCollections,
   getCardById,
   getCollectionCardCounts,
-  listSimilarCards
+  listSimilarCards,
+  toggleCardInMoodboard
 } from '../../services/db';
 
 type Props = {
@@ -62,6 +64,8 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
   const [collectionsById, setCollectionsById] = useState<Map<string, string>>(new Map());
   const [collCounts, setCollCounts] = useState<Record<string, number>>({});
   const [similar, setSimilar] = useState<CardRecord[]>([]);
+  const [inMoodboard, setInMoodboard] = useState(false);
+  const [isBookmarkHovered, setIsBookmarkHovered] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -69,7 +73,7 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
     if (hostRef.current) {
       void hydrateArc2NavbarIcons(hostRef.current);
     }
-  }, [confirmDelete, busy, card, similar, categoriesById]);
+  }, [confirmDelete, busy, card, similar, categoriesById, inMoodboard, isBookmarkHovered]);
 
   useEffect(() => {
     void (async () => {
@@ -103,6 +107,9 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
 
       const sim = await listSimilarCards(cardId, 15);
       setSimilar(sim);
+
+      const moodboardIds = await getMoodboardCardIds();
+      setInMoodboard(moodboardIds.includes(cardId));
     })();
   }, [cardId]);
 
@@ -168,6 +175,23 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
     navigate(`/gallery/${card.id}/edit`);
   };
 
+  const openSimilarCard = async () => {
+    if (!card) return;
+    const candidate = similar[0] ?? (await listSimilarCards(card.id, 1))[0];
+    if (!candidate) {
+      window.alert('Нет карточек с общими метками');
+      return;
+    }
+    onOpenCard(candidate.id);
+  };
+
+  const bookmarkIconClass = isBookmarkHovered
+    ? inMoodboard
+      ? 'arc2-icon-bookmark-minus'
+      : 'arc2-icon-bookmark-plus'
+    : 'arc2-icon-bookmark';
+  const mediaTypeIconClass = card?.type === 'video' ? 'arc2-icon-play' : 'arc2-icon-image';
+
   return (
     <div ref={hostRef} className="arc-modal-host arc-modal-host--card-inspect" aria-hidden="false" role="presentation">
       <div className="arc2-card-inspect-backdrop" aria-hidden />
@@ -202,11 +226,20 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
               <button
                 type="button"
                 className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn"
-                disabled
-                title="Скоро: мудборд"
-                aria-label="Добавить в мудборд (скоро)"
+                title={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
+                aria-label={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
+                onMouseEnter={() => setIsBookmarkHovered(true)}
+                onMouseLeave={() => setIsBookmarkHovered(false)}
+                onFocus={() => setIsBookmarkHovered(true)}
+                onBlur={() => setIsBookmarkHovered(false)}
+                onClick={async () => {
+                  if (!card) return;
+                  const next = await toggleCardInMoodboard(card.id);
+                  setInMoodboard(next);
+                }}
+                disabled={!card}
               >
-                <span className="btn-icon-only__glyph arc2-icon-bookmark" aria-hidden="true" />
+                <span className={`btn-icon-only__glyph ${bookmarkIconClass}`} aria-hidden="true" />
               </button>
               <button
                 type="button"
@@ -259,11 +292,51 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
         <div className="arc-modal__body arc2-card-inspect-body">
           <div className="arc2-card-inspect-main">
             <div className="arc2-card-inspect-preview panel elevation-sunken">
+              <span className="arc2-card-inspect-preview-badge" aria-hidden="true" data-btn-size="s">
+                <span className={`tab-icon ${mediaTypeIconClass}`} style={{ color: 'var(--gray-50)' }} />
+              </span>
               {src ? (
                 <img className="arc2-card-inspect-img" src={src} alt="" />
               ) : (
                 <div className="arc2-gallery-skeleton arc2-card-inspect-skeleton" aria-hidden />
               )}
+              <span className={`arc2-card-inspect-preview-overlay${inMoodboard ? ' is-pinned' : ''}`}>
+                <span className="arc2-card-inspect-preview-overlay-inner" data-btn-size="s">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-ds arc2-gallery-overlay-btn arc2-card-slot-blur-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      void openSimilarCard();
+                    }}
+                    disabled={!card}
+                  >
+                    <span className="btn-ds__icon arc2-icon-search" aria-hidden="true" />
+                    <span className="btn-ds__value">Найти похожее</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-icon-only btn-ds arc2-gallery-overlay-bookmark arc2-card-slot-blur-btn"
+                    title={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
+                    aria-label={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
+                    onMouseEnter={() => setIsBookmarkHovered(true)}
+                    onMouseLeave={() => setIsBookmarkHovered(false)}
+                    onFocus={() => setIsBookmarkHovered(true)}
+                    onBlur={() => setIsBookmarkHovered(false)}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!card) return;
+                      const next = await toggleCardInMoodboard(card.id);
+                      setInMoodboard(next);
+                    }}
+                    disabled={!card}
+                  >
+                    <span className={`btn-icon-only__glyph ${bookmarkIconClass}`} aria-hidden="true" />
+                  </button>
+                </span>
+              </span>
             </div>
 
             <div className="arc2-card-inspect-sidebar">

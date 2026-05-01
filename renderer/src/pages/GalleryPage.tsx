@@ -5,10 +5,12 @@ import CardInspectModal from '../components/gallery/CardInspectModal';
 import {
   ARC2_CARDS_CHANGED_EVENT,
   getAllCategories,
+  getMoodboardCardIds,
   getTagsByCategory,
   isLibraryConfigured,
   listCardsPage,
   listSimilarCards,
+  toggleCardInMoodboard,
   type CardRecord,
   type TagRecord
 } from '../services/db';
@@ -32,6 +34,12 @@ export default function GalleryPage() {
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [tagsIndex, setTagsIndex] = useState<Map<string, TagRecord>>(new Map());
+  const [moodboardCardIds, setMoodboardCardIds] = useState<Set<string>>(new Set());
+
+  const loadMoodboard = useCallback(async () => {
+    const ids = await getMoodboardCardIds();
+    setMoodboardCardIds(new Set(ids));
+  }, []);
 
   const loadTagsIndex = useCallback(async () => {
     const cats = await getAllCategories();
@@ -69,18 +77,20 @@ export default function GalleryPage() {
       setReady(ok);
       if (ok) {
         await loadTagsIndex();
+        await loadMoodboard();
         setCards([]);
         setOffset(0);
         setHasMore(true);
         await loadPage(0, false);
       }
     })();
-  }, [loadPage, loadTagsIndex]);
+  }, [loadPage, loadTagsIndex, loadMoodboard]);
 
   useEffect(() => {
     const onCards = () => {
       void loadPage(0, false);
       void loadTagsIndex();
+      void loadMoodboard();
     };
     window.addEventListener(ARC2_CARDS_CHANGED_EVENT, onCards);
     window.addEventListener('arc2:library-changed', onCards);
@@ -88,7 +98,7 @@ export default function GalleryPage() {
       window.removeEventListener(ARC2_CARDS_CHANGED_EVENT, onCards);
       window.removeEventListener('arc2:library-changed', onCards);
     };
-  }, [loadPage, loadTagsIndex]);
+  }, [loadPage, loadTagsIndex, loadMoodboard]);
 
   useEffect(() => {
     if (!ready) return;
@@ -138,6 +148,16 @@ export default function GalleryPage() {
           <GalleryBoard
             cards={cards}
             onOpenCard={(id) => setOpenCardId(id)}
+            moodboardCardIds={moodboardCardIds}
+            onToggleMoodboard={async (id) => {
+              const next = await toggleCardInMoodboard(id);
+              setMoodboardCardIds((prev) => {
+                const copy = new Set(prev);
+                if (next) copy.add(id);
+                else copy.delete(id);
+                return copy;
+              });
+            }}
             onFindSimilar={async (id) => {
               const sim = await listSimilarCards(id, 1);
               if (sim.length === 0) {

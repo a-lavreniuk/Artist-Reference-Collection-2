@@ -46,6 +46,7 @@ export default function TagSettingsModal({
   const hostRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectorRef = useRef<HTMLDivElement>(null);
+  const lastNonEmptyCreateNameRef = useRef('');
   const [tab, setTab] = useState<TabId>('main');
   const [categoryId, setCategoryId] = useState(() =>
     state.mode === 'create' ? state.categoryId : state.tag.categoryId
@@ -64,6 +65,7 @@ export default function TagSettingsModal({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const hasDuplicateNameError = Boolean(error && error.includes('уже есть'));
 
   const isEdit = state.mode === 'edit';
 
@@ -94,6 +96,7 @@ export default function TagSettingsModal({
     setImageFileName(state.mode === 'edit' && state.tag.tooltipImageDataUrl ? 'Изображение метки' : '');
     setError(null);
     setCategoryMenuOpen(false);
+    lastNonEmptyCreateNameRef.current = '';
   }, [state]);
 
   useLayoutEffect(() => {
@@ -190,7 +193,15 @@ export default function TagSettingsModal({
 
   const submit = async () => {
     const trimmedName = name.trim();
-    if (!trimmedName || isSaving) return;
+    if (isSaving) return;
+    if (!trimmedName) {
+      if (isEdit) {
+        setName(state.tag.name);
+      } else if (lastNonEmptyCreateNameRef.current) {
+        setName(lastNonEmptyCreateNameRef.current);
+      }
+      return;
+    }
     setIsSaving(true);
     setError(null);
     const descTrim = description.trim();
@@ -221,7 +232,7 @@ export default function TagSettingsModal({
   };
 
   const deleteDisabled = !isEdit || isSaving;
-  const primarySaveDisabled = !name.trim() || isSaving;
+  const primarySaveDisabled = isSaving;
 
   return (
     <>
@@ -288,13 +299,44 @@ export default function TagSettingsModal({
                   </p>
                 </div>
                 <div className="arc-modal__slot">
-                  <label className={`field input-live${name.trim() ? ' has-value' : ''}`} data-live-input>
+                  <label
+                    className={`field input-live${name.trim() ? ' has-value' : ''}${hasDuplicateNameError ? ' field-error' : ''}`}
+                    data-live-input
+                  >
                     <input
                       className="input"
                       placeholder="Название метки"
                       value={name}
                       autoFocus
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => {
+                        const nextValue = e.target.value;
+                        setName(nextValue);
+                        if (!isEdit && nextValue.trim()) {
+                          lastNonEmptyCreateNameRef.current = nextValue.trim();
+                        }
+                        if (hasDuplicateNameError) {
+                          setError(null);
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void submit();
+                          return;
+                        }
+                        if (event.key === 'Escape' && !name.trim()) {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (isEdit) {
+                            setName(state.tag.name);
+                          } else if (lastNonEmptyCreateNameRef.current) {
+                            setName(lastNonEmptyCreateNameRef.current);
+                          }
+                          if (hasDuplicateNameError) {
+                            setError(null);
+                          }
+                        }
+                      }}
                     />
                     <button
                       className="input-inline-icon input-inline-icon-floating input-clear-btn input-inline-icon--close arc2-icon-close"
@@ -424,7 +466,7 @@ export default function TagSettingsModal({
                 </div>
               </div>
             )}
-            {error ? <p className="hint-error arc2-category-modal-error">{error}</p> : null}
+            {error && !hasDuplicateNameError ? <p className="hint-error arc2-category-modal-error">{error}</p> : null}
           </div>
 
           <footer className="arc-modal__footer arc-modal__footer--actions-3">

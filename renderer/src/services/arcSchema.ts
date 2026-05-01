@@ -4,13 +4,18 @@ export type CardRecord = {
   id: string;
   type: 'image' | 'video';
   addedAt: string;
+  dateModified?: string;
   /** Относительно корня библиотеки, с прямыми слэшами */
   originalRelativePath: string;
   thumbRelativePath: string;
+  format?: string;
+  width?: number;
+  height?: number;
   tagIds: string[];
   collectionIds: string[];
   description?: string;
   fileSize?: number;
+  fileSizeMb?: number;
 };
 
 export type CollectionRecord = {
