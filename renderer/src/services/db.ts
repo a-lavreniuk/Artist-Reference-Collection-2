@@ -966,7 +966,28 @@ export async function updateCardPayload(
     notifyTagsChanged();
     return;
   }
+  const localCards = safeReadArray<unknown>(STORAGE_KEYS.cards)
+    .map(normalizeCardRecord)
+    .filter((c): c is CardRecord => c !== null);
+  if (localCards.length > 0) {
+    const next = localCards.map((c) => {
+      if (c.id !== cardId) return c;
+      const updated: CardRecord = {
+        ...c,
+        ...(patch.tagIds ? { tagIds: [...patch.tagIds] } : {}),
+        ...(patch.collectionIds ? { collectionIds: [...patch.collectionIds] } : {})
+      };
+      if (patch.description !== undefined) {
+        const trimmed = patch.description.trim();
+        if (trimmed) updated.description = trimmed;
+        else delete updated.description;
+      }
+      return updated;
+    });
+    safeWriteArray(STORAGE_KEYS.cards, next);
+  }
   notifyCardsChanged();
+  notifyTagsChanged();
 }
 
 export async function deleteCard(cardId: string): Promise<void> {

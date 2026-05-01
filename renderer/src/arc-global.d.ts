@@ -31,6 +31,9 @@ declare global {
       toFileUrl: (relativePath: string) => Promise<string | null>;
       deleteFileIfInsideLibrary: (relativePath: string) => Promise<void>;
       showItemInFolder: (relativePath: string) => Promise<void>;
+      saveMediaToFolder: (
+        relativePath: string
+      ) => Promise<{ ok: true; destinationPath: string } | { ok: false; canceled?: boolean; error?: string }>;
     };
   }
 }

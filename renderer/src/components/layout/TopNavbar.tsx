@@ -10,6 +10,7 @@ import {
 } from '../../services/db';
 import {
   ARC2_ADD_CARDS_SUBMIT_REQUEST,
+  ARC2_EDIT_CARD_SUBMIT_REQUEST,
   ARC2_COLLECTIONS_ADD_REQUEST,
   ARC2_NAVBAR_COLLECTION_TITLE_EVENT
 } from './navbarEvents';
@@ -247,6 +248,10 @@ export default function TopNavbar() {
     window.dispatchEvent(new CustomEvent(ARC2_ADD_CARDS_SUBMIT_REQUEST));
   };
 
+  const requestEditCardSubmit = () => {
+    window.dispatchEvent(new CustomEvent(ARC2_EDIT_CARD_SUBMIT_REQUEST));
+  };
+
   return (
     <>
       <header ref={headerRef} className="arc2-navbar panel elevation-default" data-navbar-elevation="default">
@@ -395,7 +400,7 @@ export default function TopNavbar() {
                   <button className="btn btn-outline btn-ds" type="button" onClick={() => navigate('/gallery')}>
                     <span className="btn-ds__value">Отмена</span>
                   </button>
-                  <button className="btn btn-success btn-ds" type="button">
+                  <button className="btn btn-success btn-ds" type="button" onClick={requestEditCardSubmit}>
                     <span className="btn-ds__value">Сохранить изменения</span>
                     <span className="btn-ds__icon arc2-icon-save" aria-hidden="true"></span>
                   </button>
