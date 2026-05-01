@@ -200,6 +200,10 @@ function parseWeight(v: unknown): CategoryWeight {
   return 'neutral';
 }
 
+function normalizeNameForCompare(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 function normalizeCategoryRecord(item: unknown, index: number): CategoryRecord {
   const r = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
   const id = typeof r.id === 'string' ? r.id : newId();
@@ -362,6 +366,12 @@ function normalizeCardRecord(item: unknown): CardRecord | null {
     ? r.collectionIds.filter((x): x is string => typeof x === 'string')
     : [];
   const fileSize = typeof r.fileSize === 'number' ? r.fileSize : undefined;
+  const fileSizeMb = typeof r.fileSizeMb === 'number' && Number.isFinite(r.fileSizeMb) ? r.fileSizeMb : undefined;
+  const format = typeof r.format === 'string' && r.format.trim() ? r.format.trim().toLowerCase() : undefined;
+  const dateModified =
+    typeof r.dateModified === 'string' && r.dateModified.trim() ? r.dateModified : undefined;
+  const width = typeof r.width === 'number' && Number.isFinite(r.width) ? r.width : undefined;
+  const height = typeof r.height === 'number' && Number.isFinite(r.height) ? r.height : undefined;
   const description =
     typeof r.description === 'string' && r.description.trim() ? String(r.description).trim() : undefined;
   return {
@@ -372,8 +382,13 @@ function normalizeCardRecord(item: unknown): CardRecord | null {
     thumbRelativePath,
     tagIds,
     collectionIds,
+    ...(format ? { format } : {}),
+    ...(dateModified ? { dateModified } : {}),
+    ...(width !== undefined ? { width } : {}),
+    ...(height !== undefined ? { height } : {}),
     ...(description ? { description } : {}),
-    ...(fileSize !== undefined ? { fileSize } : {})
+    ...(fileSize !== undefined ? { fileSize } : {}),
+    ...(fileSizeMb !== undefined ? { fileSizeMb } : {})
   };
 }
 
@@ -455,6 +470,9 @@ export async function addCategory(name: string, colorHex: string): Promise<Categ
   }
   const hex = normalizeHex(colorHex) ?? '#EAB308';
   const list = await readCategoriesUnified();
+  if (list.some((c) => normalizeNameForCompare(c.name) === normalizeNameForCompare(trimmed))) {
+    throw new Error('Категория с таким названием уже есть');
+  }
   const maxSort = list.reduce((m, c) => Math.max(m, c.sortIndex), -1);
   const created: CategoryRecord = {
     id: newId(),
@@ -474,6 +492,9 @@ export async function updateCategoryName(id: string, name: string): Promise<void
     throw new Error('Название не может быть пустым');
   }
   const list = await readCategoriesUnified();
+  if (list.some((c) => c.id !== id && normalizeNameForCompare(c.name) === normalizeNameForCompare(trimmed))) {
+    throw new Error('Категория с таким названием уже есть');
+  }
   await persistCategories(list.map((c) => (c.id === id ? { ...c, name: trimmed } : c)));
   notifyCategoriesChanged();
 }
@@ -539,9 +560,9 @@ export async function addTag(
     throw new Error('Категория не найдена');
   }
   const tags = await readTagsUnified();
-  const dup = tags.some((t) => t.categoryId === categoryId && t.name.trim().toLowerCase() === trimmed.toLowerCase());
+  const dup = tags.some((t) => normalizeNameForCompare(t.name) === normalizeNameForCompare(trimmed));
   if (dup) {
-    throw new Error(`Такая метка уже есть в категории`);
+    throw new Error('Метка с таким названием уже есть');
   }
   const desc = extras?.description?.trim();
   const img = extras?.tooltipImageDataUrl;
@@ -577,6 +598,9 @@ export async function updateTag(
   const trimmed = patch.name.trim();
   if (!trimmed) {
     throw new Error('Название метки не может быть пустым');
+  }
+  if (tags.some((t) => t.id !== tagId && normalizeNameForCompare(t.name) === normalizeNameForCompare(trimmed))) {
+    throw new Error('Метка с таким названием уже есть');
   }
   const next: TagRecord = {
     ...tag,
@@ -756,6 +780,65 @@ async function persistCards(list: CardRecord[]): Promise<void> {
     list.map((c) => ({ id: c.id, type: c.type }))
   );
   notifyCardsChanged();
+}
+
+async function readMoodboardIdsUnified(): Promise<string[]> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    normalizeMetadataShape(metadataBlob);
+    return [...metadataBlob.moodboardCardIds];
+  }
+  return safeReadArray<{ id?: string }>(STORAGE_KEYS.moodboard)
+    .map((x) => x.id)
+    .filter((id): id is string => typeof id === 'string');
+}
+
+async function persistMoodboardIds(ids: string[]): Promise<void> {
+  const normalized = [...new Set(ids)];
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    metadataBlob.moodboardCardIds = normalized;
+    await persistBlob();
+    notifyCardsChanged();
+    return;
+  }
+  safeWriteArray(
+    STORAGE_KEYS.moodboard,
+    normalized.map((id) => ({ id }))
+  );
+  notifyCardsChanged();
+}
+
+export async function getMoodboardCardIds(): Promise<string[]> {
+  return readMoodboardIdsUnified();
+}
+
+export async function isCardInMoodboard(cardId: string): Promise<boolean> {
+  const ids = await readMoodboardIdsUnified();
+  return ids.includes(cardId);
+}
+
+export async function addCardToMoodboard(cardId: string): Promise<void> {
+  if (!cardId.trim()) return;
+  const ids = await readMoodboardIdsUnified();
+  if (ids.includes(cardId)) return;
+  await persistMoodboardIds([...ids, cardId]);
+}
+
+export async function removeCardFromMoodboard(cardId: string): Promise<void> {
+  const ids = await readMoodboardIdsUnified();
+  if (!ids.includes(cardId)) return;
+  await persistMoodboardIds(ids.filter((id) => id !== cardId));
+}
+
+export async function toggleCardInMoodboard(cardId: string): Promise<boolean> {
+  const ids = await readMoodboardIdsUnified();
+  if (ids.includes(cardId)) {
+    await persistMoodboardIds(ids.filter((id) => id !== cardId));
+    return false;
+  }
+  await persistMoodboardIds([...ids, cardId]);
+  return true;
 }
 
 export async function listCardsSorted(filter: 'all' | 'images' | 'videos'): Promise<CardRecord[]> {

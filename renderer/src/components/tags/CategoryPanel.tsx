@@ -55,6 +55,7 @@ export default function CategoryPanel({
   onTagDrop
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const lastNonEmptyTagDraftRef = useRef('');
   const [nameDraft, setNameDraft] = useState(category.name);
   const [hexDraft, setHexDraft] = useState(category.colorHex.replace(/^#/, ''));
   const [tagDraft, setTagDraft] = useState('');
@@ -62,10 +63,14 @@ export default function CategoryPanel({
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [colorPickerSeed, setColorPickerSeed] = useState(category.colorHex);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [nameHasError, setNameHasError] = useState(false);
+  const [tagHasError, setTagHasError] = useState(false);
 
   useEffect(() => {
     setNameDraft(category.name);
     setHexDraft(category.colorHex.replace(/^#/, ''));
+    setNameHasError(false);
+    setTagHasError(false);
   }, [category.id, category.name, category.colorHex]);
 
   useLayoutEffect(() => {
@@ -87,6 +92,11 @@ export default function CategoryPanel({
     setBusy(true);
     try {
       await onRename(next);
+      setNameHasError(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      setNameHasError(message.includes('уже есть'));
+      setNameDraft(category.name);
     } finally {
       setBusy(false);
     }
@@ -106,11 +116,22 @@ export default function CategoryPanel({
   };
 
   const handleAddTag = async () => {
-    if (!tagDraft.trim() || busy) return;
+    if (busy) return;
+    if (!tagDraft.trim()) {
+      if (lastNonEmptyTagDraftRef.current) {
+        setTagDraft(lastNonEmptyTagDraftRef.current);
+      }
+      return;
+    }
     setBusy(true);
     try {
       await onAddTag(tagDraft.trim());
       setTagDraft('');
+      setTagHasError(false);
+      lastNonEmptyTagDraftRef.current = '';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      setTagHasError(message.includes('уже есть'));
     } finally {
       setBusy(false);
     }
@@ -127,18 +148,32 @@ export default function CategoryPanel({
         data-btn-size="m"
       >
         <div className="arc2-category-panel-settings">
-          <label className={`field input-live arc2-category-panel-stretch${nameDraft.trim() ? ' has-value' : ''}`} data-live-input>
+          <label
+            className={`field input-live arc2-category-panel-stretch${nameDraft.trim() ? ' has-value' : ''}${nameHasError ? ' field-error' : ''}`}
+            data-live-input
+          >
             <input
               className="input"
               placeholder="Введите название…"
               value={nameDraft}
-              onChange={(e) => setNameDraft(e.target.value)}
+              onChange={(e) => {
+                setNameDraft(e.target.value);
+                if (nameHasError) setNameHasError(false);
+              }}
               onBlur={() => {
                 if (!nameDraft.trim()) {
                   setNameDraft(category.name);
                   return;
                 }
                 void commitName();
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setNameDraft(category.name);
+                  if (nameHasError) setNameHasError(false);
+                  (e.currentTarget as HTMLInputElement).blur();
+                }
               }}
               disabled={busy}
             />
@@ -150,6 +185,7 @@ export default function CategoryPanel({
                 e.preventDefault();
                 e.stopPropagation();
                 setNameDraft('');
+                if (nameHasError) setNameHasError(false);
               }}
             />
           </label>
@@ -240,19 +276,36 @@ export default function CategoryPanel({
         >
           <div className="arc2-category-add-tag">
             <label
-              className={`field input-live arc2-category-add-tag-field${tagDraft.trim() ? ' has-value' : ''}`}
+              className={`field input-live arc2-category-add-tag-field${tagDraft.trim() ? ' has-value' : ''}${tagHasError ? ' field-error' : ''}`}
               data-live-input
             >
               <input
                 className="input arc2-category-add-tag-input"
                 placeholder="Название новой метки…"
                 value={tagDraft}
-                onChange={(e) => setTagDraft(e.target.value)}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setTagDraft(nextValue);
+                  if (nextValue.trim()) {
+                    lastNonEmptyTagDraftRef.current = nextValue.trim();
+                  }
+                  if (tagHasError) setTagHasError(false);
+                }}
                 disabled={busy}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     void handleAddTag();
+                    return;
+                  }
+                  if (e.key === 'Escape') {
+                    e.preventDefault();
+                    if (tagDraft.trim()) {
+                      setTagDraft('');
+                    } else if (lastNonEmptyTagDraftRef.current) {
+                      setTagDraft(lastNonEmptyTagDraftRef.current);
+                    }
+                    if (tagHasError) setTagHasError(false);
                   }
                 }}
               />
@@ -264,13 +317,14 @@ export default function CategoryPanel({
                   e.preventDefault();
                   e.stopPropagation();
                   setTagDraft('');
+                  if (tagHasError) setTagHasError(false);
                 }}
               />
             </label>
             <button
               type="button"
               className="btn btn-secondary btn-ds"
-              disabled={!tagDraft.trim() || busy}
+              disabled={busy}
               onClick={() => void handleAddTag()}
             >
               <span className="btn-ds__value">Добавить</span>

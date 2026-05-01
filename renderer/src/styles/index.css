@@ -36,7 +36,7 @@ a {
 
 .arc2-app-outlet {
   min-height: calc(100vh - 140px);
-  margin-top: var(--s-3);
+  overflow-y: hidden;
   padding: var(--s-3);
   border-radius: var(--radius-l);
   background: var(--gray-1000);
@@ -379,18 +379,34 @@ button.color-swatch-inline:disabled {
 
 .arc2-gallery-card-badge {
   position: absolute;
-  top: var(--s-2);
-  left: var(--s-2);
+  top: var(--s-3);
+  left: var(--s-3);
   z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: calc(var(--s-2) * 2 + 4px);
-  height: calc(var(--s-2) * 2 + 4px);
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-s);
-  background: color-mix(in srgb, var(--gray-1000) 45%, transparent);
-  color: var(--gray-200);
+  background: var(--Blur-Default, rgba(26, 26, 29, 0.2));
+  -webkit-backdrop-filter: blur(64px);
+  backdrop-filter: blur(64px);
+  color: var(--gray-50) !important;
   pointer-events: none;
+}
+
+.arc2-gallery-card-badge .tab-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--gray-50) !important;
+}
+
+.arc2-gallery-card-badge .arc-navbar-icon-svg [stroke] {
+  stroke: currentColor !important;
+}
+
+.arc2-gallery-card-badge .arc-navbar-icon-svg [fill]:not([fill="none"]) {
+  fill: currentColor !important;
 }
 
 .arc2-gallery-card-overlay {
@@ -401,11 +417,7 @@ button.color-swatch-inline:disabled {
   align-items: flex-end;
   justify-content: flex-start;
   padding: var(--s-3);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--gray-1000) 0%, transparent) 40%,
-    color-mix(in srgb, var(--gray-1000) 72%, transparent) 100%
-  );
+  background: transparent;
   opacity: 0;
   transition: opacity var(--transition-fast);
   pointer-events: none;
@@ -417,7 +429,19 @@ button.color-swatch-inline:disabled {
   pointer-events: auto;
 }
 
+.arc2-gallery-card-wrap.is-in-moodboard .arc2-gallery-card-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .arc2-gallery-card-overlay-inner {
+  --btn-h: 24px;
+  --btn-radius: 8px;
+  --btn-pad-x: 8px;
+  --btn-gap: 6px;
+  --btn-font-size: 12px;
+  --btn-line-height: 16px;
+  --btn-icon-size: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -427,6 +451,15 @@ button.color-swatch-inline:disabled {
 
 .arc2-gallery-overlay-btn {
   flex: 0 1 auto;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+.arc2-gallery-card-wrap:hover .arc2-gallery-overlay-btn,
+.arc2-gallery-card-wrap:focus-within .arc2-gallery-overlay-btn {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .arc2-gallery-overlay-bookmark {
@@ -546,6 +579,7 @@ button.color-swatch-inline:disabled {
 
 .arc2-card-inspect-preview {
   flex: 1 1 58%;
+  position: relative;
   min-width: 0;
   min-height: 200px;
   max-height: calc(100vh - var(--s-4) * 8);
@@ -553,6 +587,115 @@ button.color-swatch-inline:disabled {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+}
+
+.arc2-card-inspect-preview-badge {
+  position: absolute;
+  top: var(--s-2);
+  left: var(--s-2);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-s);
+  background: var(--Blur-Default, rgba(26, 26, 29, 0.2));
+  -webkit-backdrop-filter: blur(64px);
+  backdrop-filter: blur(64px);
+  color: var(--gray-50) !important;
+  pointer-events: none;
+}
+
+.arc2-card-inspect-preview-badge .tab-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--gray-50) !important;
+}
+
+.arc2-card-inspect-preview-badge .arc-navbar-icon-svg [stroke] {
+  stroke: currentColor !important;
+}
+
+.arc2-card-inspect-preview-badge .arc-navbar-icon-svg [fill]:not([fill="none"]) {
+  fill: currentColor !important;
+}
+
+.arc2-card-inspect-preview-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: var(--s-3);
+  background: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+.arc2-card-inspect-preview:hover .arc2-card-inspect-preview-overlay,
+.arc2-card-inspect-preview:focus-within .arc2-card-inspect-preview-overlay,
+.arc2-card-inspect-preview-overlay.is-pinned {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.arc2-card-inspect-preview-overlay-inner {
+  --btn-h: 24px;
+  --btn-radius: 8px;
+  --btn-pad-x: 8px;
+  --btn-gap: 6px;
+  --btn-font-size: 12px;
+  --btn-line-height: 16px;
+  --btn-icon-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  width: 100%;
+}
+
+.arc2-card-inspect-preview-overlay .arc2-gallery-overlay-btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.arc2-card-inspect-preview:hover .arc2-card-inspect-preview-overlay .arc2-gallery-overlay-btn,
+.arc2-card-inspect-preview:focus-within .arc2-card-inspect-preview-overlay .arc2-gallery-overlay-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.arc2-card-slot-blur-btn.btn {
+  background: var(--Blur-Default, rgba(26, 26, 29, 0.2));
+  -webkit-backdrop-filter: blur(64px);
+  backdrop-filter: blur(64px);
+  border: 0;
+  box-shadow: none;
+}
+
+.arc2-card-slot-blur-btn.btn .btn-ds__value,
+.arc2-card-slot-blur-btn.btn .btn-ds__icon,
+.arc2-card-slot-blur-btn.btn .btn-icon-only__glyph {
+  color: var(--gray-50) !important;
+}
+
+.arc2-card-slot-blur-btn.btn:hover:not(:disabled),
+.arc2-card-slot-blur-btn.btn:focus-visible:not(:disabled) {
+  background: var(--Blur-Hover, rgba(26, 26, 29, 0.5));
+  border: 0;
+  box-shadow: none;
+}
+
+.arc2-card-slot-blur-btn.btn:hover:not(:disabled) .btn-ds__value,
+.arc2-card-slot-blur-btn.btn:hover:not(:disabled) .btn-ds__icon,
+.arc2-card-slot-blur-btn.btn:hover:not(:disabled) .btn-icon-only__glyph,
+.arc2-card-slot-blur-btn.btn:focus-visible:not(:disabled) .btn-ds__value,
+.arc2-card-slot-blur-btn.btn:focus-visible:not(:disabled) .btn-ds__icon,
+.arc2-card-slot-blur-btn.btn:focus-visible:not(:disabled) .btn-icon-only__glyph {
+  color: var(--gray-50) !important;
 }
 
 .arc2-card-inspect-img {

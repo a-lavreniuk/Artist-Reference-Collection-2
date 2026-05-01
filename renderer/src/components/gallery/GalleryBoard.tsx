@@ -1,14 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CardRecord } from '../../services/db';
+import { hydrateArc2NavbarIcons } from '../layout/navbarIconHydrate';
 
 type Props = {
   cards: CardRecord[];
   onOpenCard: (id: string) => void;
   onFindSimilar?: (cardId: string) => void;
+  moodboardCardIds: Set<string>;
+  onToggleMoodboard: (cardId: string) => void | Promise<void>;
 };
 
-export default function GalleryBoard({ cards, onOpenCard, onFindSimilar }: Props) {
+export default function GalleryBoard({ cards, onOpenCard, onFindSimilar, moodboardCardIds, onToggleMoodboard }: Props) {
   const [srcMap, setSrcMap] = useState<Record<string, string>>({});
+  const [hoveredBookmarkCardId, setHoveredBookmarkCardId] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!window.arc) {
@@ -31,14 +36,29 @@ export default function GalleryBoard({ cards, onOpenCard, onFindSimilar }: Props
     };
   }, [cards]);
 
+  useLayoutEffect(() => {
+    if (rootRef.current) {
+      void hydrateArc2NavbarIcons(rootRef.current);
+    }
+  }, [cards, hoveredBookmarkCardId, moodboardCardIds]);
+
   return (
-    <div className="arc2-gallery-masonry">
-      {cards.map((card) => (
+    <div ref={rootRef} className="arc2-gallery-masonry">
+      {cards.map((card) => {
+        const inMoodboard = moodboardCardIds.has(card.id);
+        const iconClass =
+          hoveredBookmarkCardId === card.id
+            ? inMoodboard
+              ? 'arc2-icon-bookmark-minus'
+              : 'arc2-icon-bookmark-plus'
+            : 'arc2-icon-bookmark';
+        const mediaTypeIconClass = card.type === 'video' ? 'arc2-icon-play' : 'arc2-icon-image';
+        return (
         <div
           key={card.id}
           role="button"
           tabIndex={0}
-          className="arc2-gallery-card-wrap panel elevation-default"
+          className={`arc2-gallery-card-wrap panel elevation-default${inMoodboard ? ' is-in-moodboard' : ''}`}
           onClick={() => onOpenCard(card.id)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -48,8 +68,8 @@ export default function GalleryBoard({ cards, onOpenCard, onFindSimilar }: Props
           }}
         >
           <span className="arc2-gallery-card-stack">
-            <span className="arc2-gallery-card-badge" aria-hidden="true">
-              <span className="tab-icon arc2-icon-image" />
+            <span className="arc2-gallery-card-badge" aria-hidden="true" data-btn-size="s">
+              <span className={`tab-icon ${mediaTypeIconClass}`} style={{ color: 'var(--gray-50)' }} />
             </span>
             {srcMap[card.id] ? (
               <img className="arc2-gallery-thumb" src={srcMap[card.id]} alt="" loading="lazy" decoding="async" />
@@ -57,39 +77,44 @@ export default function GalleryBoard({ cards, onOpenCard, onFindSimilar }: Props
               <div className="arc2-gallery-skeleton" aria-hidden />
             )}
             <span className="arc2-gallery-card-overlay">
-              <span className="arc2-gallery-card-overlay-inner">
+              <span className="arc2-gallery-card-overlay-inner" data-btn-size="s">
                 {onFindSimilar ? (
                   <button
                     type="button"
-                    className="btn btn-secondary btn-ds arc2-gallery-overlay-btn"
+                    className="btn btn-secondary btn-ds arc2-gallery-overlay-btn arc2-card-slot-blur-btn"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       onFindSimilar(card.id);
                     }}
                   >
-                    <span className="btn-ds__value">Найти похожее</span>
                     <span className="btn-ds__icon arc2-icon-search" aria-hidden="true" />
+                    <span className="btn-ds__value">Найти похожее</span>
                   </button>
                 ) : null}
                 <button
                   type="button"
-                  className="btn btn-outline btn-icon-only btn-ds arc2-gallery-overlay-bookmark"
-                  disabled
-                  title="Скоро: мудборд"
-                  aria-label="В мудборд (скоро)"
+                  className="btn btn-outline btn-icon-only btn-ds arc2-gallery-overlay-bookmark arc2-card-slot-blur-btn"
+                  title={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
+                  aria-label={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
+                  onMouseEnter={() => setHoveredBookmarkCardId(card.id)}
+                  onMouseLeave={() => setHoveredBookmarkCardId((prev) => (prev === card.id ? null : prev))}
+                  onFocus={() => setHoveredBookmarkCardId(card.id)}
+                  onBlur={() => setHoveredBookmarkCardId((prev) => (prev === card.id ? null : prev))}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    void onToggleMoodboard(card.id);
                   }}
                 >
-                  <span className="btn-icon-only__glyph arc2-icon-bookmark" aria-hidden="true" />
+                  <span className={`btn-icon-only__glyph ${iconClass}`} aria-hidden="true" />
                 </button>
               </span>
             </span>
           </span>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

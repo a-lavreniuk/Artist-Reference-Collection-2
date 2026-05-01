@@ -22,6 +22,8 @@ type IconKey =
   | 'arrowDown'
   | 'trash'
   | 'bookmark'
+  | 'bookmarkPlus'
+  | 'bookmarkMinus'
   | 'download'
   | 'folderOpen'
   | 'edit';
@@ -44,10 +46,14 @@ const ICON_FILES: Record<IconKey, string> = {
   arrowDown: 'arrow-down_s.svg',
   trash: 'trash_m.svg',
   bookmark: 'bookmark_m.svg',
+  bookmarkPlus: 'bookmark-plus_m.svg',
+  bookmarkMinus: 'bookmark-minus_m.svg',
   download: 'download_m.svg',
   folderOpen: 'folder-open_m.svg',
   edit: 'edit_m.svg'
 };
+const SIZE_SUFFIX_RE = /_(s|m|l|xl)\.svg$/;
+type UiSize = 's' | 'm' | 'l';
 
 const ICON_CLASS_TO_KEY: Record<string, IconKey> = {
   arc2_icon_search: 'search',
@@ -67,13 +73,15 @@ const ICON_CLASS_TO_KEY: Record<string, IconKey> = {
   arc2_icon_arrow_down: 'arrowDown',
   arc2_icon_trash: 'trash',
   arc2_icon_bookmark: 'bookmark',
+  arc2_icon_bookmark_plus: 'bookmarkPlus',
+  arc2_icon_bookmark_minus: 'bookmarkMinus',
   arc2_icon_download: 'download',
   arc2_icon_folder_open: 'folderOpen',
   arc2_icon_edit: 'edit'
 };
 
 const ICON_SELECTOR =
-  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-trash, .arc2-icon-bookmark, .arc2-icon-download, .arc2-icon-folder-open, .arc2-icon-edit';
+  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-trash, .arc2-icon-bookmark, .arc2-icon-bookmark-plus, .arc2-icon-bookmark-minus, .arc2-icon-download, .arc2-icon-folder-open, .arc2-icon-edit';
 
 const svgMarkupCache = new Map<string, string>();
 let preloadPromise: Promise<void> | null = null;
@@ -107,6 +115,24 @@ function iconUrl(file: string): string {
   const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : '/';
   const normalized = base.endsWith('/') ? base.slice(0, -1) : base;
   return `${normalized}${ICON_DIR}${file}`;
+}
+
+function getCurrentBtnSize(scope?: HTMLElement): UiSize {
+  const raw =
+    scope?.closest('[data-btn-size]')?.getAttribute('data-btn-size') ?? document.body?.getAttribute('data-btn-size');
+  if (raw === 's' || raw === 'm' || raw === 'l') return raw;
+  return 'm';
+}
+
+function withSizeVariant(file: string, size: UiSize): string {
+  if (!SIZE_SUFFIX_RE.test(file)) return file;
+  return file.replace(SIZE_SUFFIX_RE, `_${size}.svg`);
+}
+
+function resolveIconFile(iconKey: IconKey, scope?: HTMLElement): { preferred: string; fallback: string } {
+  const fallback = ICON_FILES[iconKey];
+  const preferred = withSizeVariant(fallback, getCurrentBtnSize(scope));
+  return { preferred, fallback };
 }
 
 async function ensureSvgMarkup(file: string): Promise<string | null> {
@@ -161,13 +187,16 @@ export async function hydrateArc2NavbarIcons(scope: ParentNode = document): Prom
     if (!(node instanceof HTMLElement)) continue;
     const iconKey = classToIconKey(node);
     if (!iconKey) continue;
-    const file = ICON_FILES[iconKey];
-    if (!file) continue;
-    if (node.dataset.arc2IconFile === file && node.querySelector(':scope > svg.arc-navbar-icon-svg')) {
+    const { preferred, fallback } = resolveIconFile(iconKey, node);
+    if (node.dataset.arc2IconFile === preferred && node.querySelector(':scope > svg.arc-navbar-icon-svg')) {
       continue;
     }
-    const normalized = svgMarkupCache.get(file);
+    const normalized = (await ensureSvgMarkup(preferred)) ?? (preferred !== fallback ? await ensureSvgMarkup(fallback) : null);
     if (!normalized) continue;
-    injectSvgMarkup(node, normalized, file);
+    const usedFile = svgMarkupCache.get(preferred) ? preferred : fallback;
+    if (node.dataset.arc2IconFile === usedFile && node.querySelector(':scope > svg.arc-navbar-icon-svg')) {
+      continue;
+    }
+    injectSvgMarkup(node, normalized, usedFile);
   }
 }

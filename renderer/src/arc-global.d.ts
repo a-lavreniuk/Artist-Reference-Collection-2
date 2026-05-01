@@ -20,7 +20,12 @@ declare global {
           originalRelativePath: string;
           thumbRelativePath: string;
           fileSize: number;
+          fileSizeMb?: number;
           addedAt: string;
+          dateModified?: string;
+          width?: number;
+          height?: number;
+          format?: string;
         }>
       >;
       toFileUrl: (relativePath: string) => Promise<string | null>;

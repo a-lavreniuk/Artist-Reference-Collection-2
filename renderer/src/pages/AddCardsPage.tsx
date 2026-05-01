@@ -31,6 +31,30 @@ function basename(p: string): string {
   return parts[parts.length - 1] || p;
 }
 
+function extractFormat(pathLike: string): string | undefined {
+  const idx = pathLike.lastIndexOf('.');
+  if (idx < 0 || idx === pathLike.length - 1) return undefined;
+  const ext = pathLike.slice(idx + 1).trim().toLowerCase();
+  return ext || undefined;
+}
+
+function toMegabytes(bytes: number): number {
+  const mb = bytes / (1024 * 1024);
+  return Math.round(mb * 1000) / 1000;
+}
+
+async function getImageSizeByRelativePath(relativePath: string): Promise<{ width: number; height: number } | null> {
+  if (!window.arc) return null;
+  const fileUrl = await window.arc.toFileUrl(relativePath);
+  if (!fileUrl) return null;
+  return await new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve(null);
+    img.src = fileUrl;
+  });
+}
+
 export default function AddCardsPage() {
   const navigate = useNavigate();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -101,13 +125,26 @@ export default function AddCardsPage() {
     setBusy(true);
     try {
       const imported = await window.arc.importFiles(queue.map((q) => q.absPath));
-      const merged = imported.map((row, i) => ({
-        ...row,
-        type: 'image' as const,
-        tagIds: queue[i].tagIds,
-        collectionIds: queue[i].collectionIds,
-        ...(queue[i].description.trim() ? { description: queue[i].description.trim() } : {})
-      }));
+      const merged = await Promise.all(
+        imported.map(async (row, i) => {
+          const dimensions = row.width && row.height ? { width: row.width, height: row.height } : await getImageSizeByRelativePath(row.originalRelativePath);
+          const fileSizeMb =
+            typeof row.fileSizeMb === 'number' && Number.isFinite(row.fileSizeMb)
+              ? row.fileSizeMb
+              : toMegabytes(row.fileSize);
+          return {
+            ...row,
+            type: 'image' as const,
+            format: row.format ?? extractFormat(row.originalRelativePath) ?? extractFormat(queue[i].absPath),
+            dateModified: row.dateModified ?? row.addedAt,
+            fileSizeMb,
+            ...(dimensions ? dimensions : {}),
+            tagIds: queue[i].tagIds,
+            collectionIds: queue[i].collectionIds,
+            ...(queue[i].description.trim() ? { description: queue[i].description.trim() } : {})
+          };
+        })
+      );
       await insertImportedCards(merged);
       navigate('/gallery');
     } catch (e) {

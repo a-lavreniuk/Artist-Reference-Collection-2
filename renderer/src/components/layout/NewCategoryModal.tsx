@@ -12,12 +12,14 @@ type Props = {
 
 export default function NewCategoryModal({ onClose, onSubmit }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const lastNonEmptyNameRef = useRef('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [colorHex, setColorHex] = useState(DEFAULT_COLOR);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const normalized = normalizeHex(colorHex) ?? DEFAULT_COLOR;
+  const hasDuplicateNameError = Boolean(error && error.includes('уже есть'));
 
   useLayoutEffect(() => {
     if (hostRef.current) {
@@ -36,7 +38,13 @@ export default function NewCategoryModal({ onClose, onSubmit }: Props) {
   }, [onClose]);
 
   const handleSubmit = async () => {
-    if (!newCategoryName.trim() || isSaving) return;
+    if (isSaving) return;
+    if (!newCategoryName.trim()) {
+      if (lastNonEmptyNameRef.current) {
+        setNewCategoryName(lastNonEmptyNameRef.current);
+      }
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
@@ -85,13 +93,42 @@ export default function NewCategoryModal({ onClose, onSubmit }: Props) {
             </p>
           </div>
           <div className="arc-modal__slot">
-            <label className={`field input-live${newCategoryName.trim() ? ' has-value' : ''}`} data-live-input>
+            <label
+              className={`field input-live${newCategoryName.trim() ? ' has-value' : ''}${hasDuplicateNameError ? ' field-error' : ''}`}
+              data-live-input
+            >
               <input
                 className="input"
                 placeholder="Введите название…"
                 value={newCategoryName}
                 autoFocus
-                onChange={(event) => setNewCategoryName(event.target.value)}
+                onChange={(event) => {
+                  const nextValue = event.target.value;
+                  setNewCategoryName(nextValue);
+                  if (nextValue.trim()) {
+                    lastNonEmptyNameRef.current = nextValue.trim();
+                  }
+                  if (hasDuplicateNameError) {
+                    setError(null);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    void handleSubmit();
+                    return;
+                  }
+                  if (event.key === 'Escape') {
+                    if (!newCategoryName.trim() && lastNonEmptyNameRef.current) {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setNewCategoryName(lastNonEmptyNameRef.current);
+                      if (hasDuplicateNameError) {
+                        setError(null);
+                      }
+                    }
+                  }
+                }}
               />
               <button
                 className="input-inline-icon input-inline-icon-floating input-clear-btn input-inline-icon--close arc2-icon-close"
@@ -109,7 +146,7 @@ export default function NewCategoryModal({ onClose, onSubmit }: Props) {
             <hr className="arc-modal__separator" />
           </div>
           <ModalCategoryColorPicker value={normalized} onChange={(hex) => setColorHex(hex)} />
-          {error ? <p className="hint-error arc2-category-modal-error">{error}</p> : null}
+          {error && !hasDuplicateNameError ? <p className="hint-error arc2-category-modal-error">{error}</p> : null}
         </div>
         <footer className="arc-modal__footer arc-modal__footer--actions-3">
           <button type="button" className="btn btn-outline btn-ds btn-s" disabled aria-disabled="true">
@@ -122,7 +159,7 @@ export default function NewCategoryModal({ onClose, onSubmit }: Props) {
             <button
               type="button"
               className="btn btn-primary btn-ds btn-s"
-              disabled={!newCategoryName.trim() || isSaving}
+              disabled={isSaving}
               onClick={() => void handleSubmit()}
             >
               <span className="btn-ds__value">{isSaving ? 'Добавление…' : 'Добавить'}</span>
