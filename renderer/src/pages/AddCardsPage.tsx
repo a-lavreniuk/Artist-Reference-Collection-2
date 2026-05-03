@@ -19,8 +19,10 @@ import {
   updateTag,
   type TagRecord,
   type CollectionRecord,
-  type CategoryRecord
+  type CategoryRecord,
+  type CardRecord
 } from '../services/db';
+import { isImportableMediaPath, isVideoPath } from '../media/allowedImportExtensions';
 
 const MAX_QUEUE = 25;
 
@@ -95,6 +97,31 @@ async function getImageSizeByRelativePath(relativePath: string): Promise<{ width
     img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
     img.onerror = () => resolve(null);
     img.src = fileUrl;
+  });
+}
+
+async function getVideoSizeByRelativePath(relativePath: string): Promise<{ width: number; height: number } | null> {
+  if (!window.arc) return null;
+  const fileUrl = await window.arc.toFileUrl(relativePath);
+  if (!fileUrl) return null;
+  return await new Promise((resolve) => {
+    const v = document.createElement('video');
+    v.preload = 'metadata';
+    v.muted = true;
+    v.playsInline = true;
+    const done = (dim: { width: number; height: number } | null) => {
+      v.removeAttribute('src');
+      v.load();
+      resolve(dim);
+    };
+    v.onloadedmetadata = () => {
+      const w = v.videoWidth;
+      const h = v.videoHeight;
+      if (w && h) done({ width: w, height: h });
+      else done(null);
+    };
+    v.onerror = () => done(null);
+    v.src = fileUrl;
   });
 }
 
@@ -254,30 +281,53 @@ export default function AddCardsPage() {
     setBusy(true);
     try {
       const cappedQueue = capQueueItems(queue);
-      const imported = await window.arc.importFiles(cappedQueue.map((q) => q.absPath));
-      const merged = await Promise.all(
-        imported.map(async (row, i) => {
-          const dimensions = row.width && row.height ? { width: row.width, height: row.height } : await getImageSizeByRelativePath(row.originalRelativePath);
-          const fileSizeMb =
-            typeof row.fileSizeMb === 'number' && Number.isFinite(row.fileSizeMb)
-              ? row.fileSizeMb
-              : toMegabytes(row.fileSize);
-          const src = cappedQueue[i];
-          return {
-            ...row,
-            type: 'image' as const,
-            format: row.format ?? extractFormat(row.originalRelativePath) ?? extractFormat(src.absPath),
-            dateModified: row.dateModified ?? row.addedAt,
-            fileSizeMb,
-            ...(dimensions ? dimensions : {}),
-            tagIds: src.tagIds,
-            collectionIds: src.collectionIds,
-            ...(src.description.trim() ? { description: src.description.trim() } : {})
-          };
-        })
-      );
+      const results = await window.arc.importFiles(cappedQueue.map((q) => q.absPath));
+      const failures = results.filter((r) => !r.ok).map((r) => r.error);
+      const merged: CardRecord[] = [];
+
+      for (let i = 0; i < results.length; i++) {
+        const res = results[i];
+        if (!res.ok) continue;
+        const row = res.row;
+        const src = cappedQueue[i];
+        let dimensions: { width: number; height: number } | null =
+          row.width && row.height ? { width: row.width, height: row.height } : null;
+        if (!dimensions) {
+          dimensions =
+            row.type === 'image'
+              ? await getImageSizeByRelativePath(row.originalRelativePath)
+              : await getVideoSizeByRelativePath(row.originalRelativePath);
+        }
+        const fileSizeMb = toMegabytes(row.fileSize);
+        merged.push({
+          id: row.id,
+          type: row.type,
+          addedAt: row.addedAt,
+          originalRelativePath: row.originalRelativePath,
+          thumbRelativePath: row.thumbRelativePath,
+          format: extractFormat(row.originalRelativePath) ?? extractFormat(src.absPath),
+          dateModified: row.addedAt,
+          fileSize: row.fileSize,
+          fileSizeMb,
+          ...(dimensions ? dimensions : {}),
+          tagIds: src.tagIds,
+          collectionIds: src.collectionIds,
+          ...(src.description.trim() ? { description: src.description.trim() } : {})
+        });
+      }
+
+      if (merged.length === 0) {
+        setError(failures.length ? failures.join(' ') : 'Не удалось импортировать файлы.');
+        return;
+      }
+
       await insertImportedCards(merged);
-      navigate('/gallery');
+
+      if (failures.length) {
+        navigate('/gallery', { state: { importWarnings: failures } });
+      } else {
+        navigate('/gallery');
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Не удалось импортировать');
     } finally {
@@ -292,6 +342,8 @@ export default function AddCardsPage() {
   }, [handleSubmitAll]);
 
   const appendPaths = useCallback((paths: string[]) => {
+    const allowed = paths.filter((p) => isImportableMediaPath(p));
+    const skipped = paths.length - allowed.length;
     setQueue((prev) => {
       const safePrev = capQueueItems(prev);
       if (safePrev.length < prev.length) {
@@ -306,7 +358,14 @@ export default function AddCardsPage() {
         );
         return safePrev;
       }
-      const slice = paths.slice(0, remaining).map((absPath) => ({
+      if (skipped > 0) {
+        requestAnimationFrame(() =>
+          setError(
+            `Пропущено файлов с неподдерживаемым расширением: ${skipped}. Допустимы изображения и видео из списка форматов приложения.`
+          )
+        );
+      }
+      const slice = allowed.slice(0, remaining).map((absPath) => ({
         key: `${crypto.randomUUID?.() ?? String(Math.random())}-${basename(absPath)}`,
         absPath,
         tagIds: [],
@@ -319,11 +378,11 @@ export default function AddCardsPage() {
         requestAnimationFrame(() =>
           setError(`В очереди не больше ${MAX_QUEUE} файлов — лишнее отброшено.`)
         );
-      } else if (paths.length > remaining) {
+      } else if (allowed.length > remaining) {
         requestAnimationFrame(() =>
-          setError(`Добавлено ${slice.length} из ${paths.length} файлов (лимит очереди ${MAX_QUEUE}).`)
+          setError(`Добавлено ${slice.length} из ${allowed.length} файлов (лимит очереди ${MAX_QUEUE}).`)
         );
-      } else {
+      } else if (!skipped) {
         requestAnimationFrame(() => setError(null));
       }
       return merged;
@@ -335,9 +394,17 @@ export default function AddCardsPage() {
       setError('Доступно только в Electron.');
       return;
     }
-    const paths = await window.arc.pickImageFiles();
-    if (!paths.length) return;
-    appendPaths(paths);
+    try {
+      const pick =
+        typeof window.arc.pickMediaFiles === 'function'
+          ? window.arc.pickMediaFiles
+          : window.arc.pickImageFiles;
+      const paths = await pick.call(window.arc);
+      if (!paths.length) return;
+      appendPaths(paths);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось открыть окно выбора файлов');
+    }
   };
 
   const onQueueStripPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -558,7 +625,15 @@ export default function AddCardsPage() {
               Можно перетащить файлы в это окно или нажать на кнопку. Допускается загрузка нескольких файлов
               одновременно, но не более 25-ти в очереди.
             </p>
-            <button type="button" className="btn btn-primary btn-ds arc2-add-dropzone-cta" onClick={() => void pickFiles()}>
+            <button
+              type="button"
+              className="btn btn-primary btn-ds arc2-add-dropzone-cta"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void pickFiles();
+              }}
+            >
               <span className="btn-ds__value">Добавить</span>
               <span className="btn-ds__icon arc2-add-dropzone-plus-icon" aria-hidden="true" />
             </button>
@@ -598,7 +673,18 @@ export default function AddCardsPage() {
                     aria-label={`Выбрать в очереди: ${fileLabel}`}
                   >
                     {previewSrc ? (
-                      <img className="arc2-add-queue-tile-img" src={previewSrc} alt="" loading="lazy" decoding="async" />
+                      isVideoPath(item.absPath) ? (
+                        <video
+                          className="arc2-add-queue-tile-video"
+                          src={previewSrc}
+                          muted
+                          playsInline
+                          preload="metadata"
+                          aria-hidden
+                        />
+                      ) : (
+                        <img className="arc2-add-queue-tile-img" src={previewSrc} alt="" loading="lazy" decoding="async" />
+                      )
                     ) : null}
                   </button>
                   <div className="arc-ui-kit-scope arc2-add-queue-tile-remove" data-btn-size="s">
@@ -634,7 +720,20 @@ export default function AddCardsPage() {
           {active ? (
             <div className="arc2-add-workspace">
               <div className="arc2-add-preview panel">
-                {activePreviewSrc ? <img className="arc2-add-preview-image" src={activePreviewSrc} alt="" /> : null}
+                {activePreviewSrc ? (
+                  active && isVideoPath(active.absPath) ? (
+                    <video
+                      className="arc2-add-preview-image"
+                      src={activePreviewSrc}
+                      muted
+                      playsInline
+                      controls
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img className="arc2-add-preview-image" src={activePreviewSrc} alt="" />
+                  )
+                ) : null}
               </div>
 
               <div

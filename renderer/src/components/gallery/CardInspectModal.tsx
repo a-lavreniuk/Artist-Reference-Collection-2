@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { hydrateArc2NavbarIcons } from '../layout/navbarIconHydrate';
 import MessageModal from '../layout/MessageModal';
 import { Tooltip } from '../tooltip/Tooltip';
@@ -15,6 +15,9 @@ import {
   listSimilarCards,
   toggleCardInMoodboard
 } from '../../services/db';
+import { ARC2_SEARCH_QUERY_CARD, ARC2_SEARCH_QUERY_TAG } from '../../search/searchUrl';
+import { pushRecentTagId } from '../../search/recentSearchTags';
+import { getVideoPlaybackTierFromPath, videoPlaybackDescription } from '../../media/canPlayInBrowser';
 
 type Props = {
   cardId: string;
@@ -77,6 +80,8 @@ function renderDescriptionWithLinks(value: string): ReactNode {
 
 export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted, onOpenCard }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const hostRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const bodyScrollRef = useRef(0);
@@ -93,6 +98,7 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
   const [copyAlertVisible, setCopyAlertVisible] = useState(false);
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
   const copyAlertTimerRef = useRef<number | null>(null);
+  const inspectVideoRef = useRef<HTMLVideoElement | null>(null);
 
   useLayoutEffect(() => {
     if (hostRef.current) {
@@ -251,6 +257,19 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
     navigate(`/gallery/${card.id}/edit`);
   };
 
+  const searchByTag = (tagId: string) => {
+    pushRecentTagId(tagId);
+    const n = new URLSearchParams(searchParams);
+    n.delete(ARC2_SEARCH_QUERY_TAG);
+    n.append(ARC2_SEARCH_QUERY_TAG, tagId);
+    n.delete(ARC2_SEARCH_QUERY_CARD);
+    onClose();
+    navigate(
+      { pathname: location.pathname, search: n.toString() ? `?${n.toString()}` : '' },
+      { replace: true }
+    );
+  };
+
   useEffect(() => {
     const bodyNode = bodyRef.current;
     if (!bodyNode) return;
@@ -278,6 +297,11 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  const videoTier =
+    card?.type === 'video' && card.originalRelativePath
+      ? getVideoPlaybackTierFromPath(card.originalRelativePath)
+      : null;
 
   const bookmarkIconClass = isBookmarkHovered
     ? inMoodboard
@@ -398,10 +422,31 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
         <div ref={bodyRef} className="arc-modal__body arc2-card-inspect-body">
           <div className="arc2-card-inspect-main">
             <div className="arc2-card-inspect-preview panel">
+              {card?.type === 'video' && videoTier && videoTier !== 'html5' ? (
+                <p className="text-s arc2-card-inspect-video-note">{videoPlaybackDescription(videoTier)}</p>
+              ) : null}
               {src && card?.type === 'video' ? (
-                <video className="arc2-card-inspect-video" src={src} controls preload="metadata" />
+                <div className="arc2-card-inspect-media-fit">
+                  <video
+                    ref={inspectVideoRef}
+                    className="arc2-card-inspect-video"
+                    src={src}
+                    controls
+                    preload="metadata"
+                    autoPlay
+                    muted
+                    playsInline
+                    onLoadedData={() => {
+                      void inspectVideoRef.current?.play().catch(() => {
+                        /* автоплей может быть заблокирован политикой — остаются controls */
+                      });
+                    }}
+                  />
+                </div>
               ) : src ? (
-                <img className="arc2-card-inspect-img" src={src} alt="" />
+                <div className="arc2-card-inspect-media-fit">
+                  <img className="arc2-card-inspect-img" src={src} alt="" />
+                </div>
               ) : (
                 <div className="arc2-gallery-skeleton arc2-card-inspect-skeleton" aria-hidden />
               )}
@@ -455,11 +500,17 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
                     </div>
                     <div className="arc2-card-meta-chips arc2-card-meta-chips--tags">
                       {tagsSorted.map(({ tag, colorHex }) => (
-                        <span key={tag.id} className="arc2-card-meta-chip arc2-card-meta-chip--tag">
-                          <span className="arc2-card-meta-chip-dot" style={{ background: colorHex }} />
+                        <button
+                          key={tag.id}
+                          type="button"
+                          className="arc2-card-meta-chip arc2-card-meta-chip--tag arc2-card-meta-chip-btn"
+                          onClick={() => searchByTag(tag.id)}
+                          aria-label={`Искать по метке «${tag.name}»`}
+                        >
+                          <span className="arc2-card-meta-chip-dot" style={{ background: colorHex }} aria-hidden="true" />
                           <span className="arc2-card-meta-chip-name">{tag.name}</span>
                           <span className="arc2-card-meta-chip-count">{tag.usageCount}</span>
-                        </span>
+                        </button>
                       ))}
                     </div>
                   </section>

@@ -217,7 +217,8 @@ export default function TopNavbar() {
 
   const galleryTabs: TabItem[] = [
     { key: 'all', label: 'Все карточки', count: metrics.totalCards, iconClass: 'arc2-icon-images' },
-    { key: 'images', label: 'Изображения', count: metrics.imageCards, iconClass: 'arc2-icon-image' }
+    { key: 'images', label: 'Изображения', count: metrics.imageCards, iconClass: 'arc2-icon-image' },
+    { key: 'videos', label: 'Видео', count: metrics.videoCards, iconClass: 'arc2-icon-play' }
   ];
 
   const moodboardTabs: TabItem[] = [

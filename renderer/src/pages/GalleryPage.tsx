@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import GalleryBoard from '../components/gallery/GalleryBoard';
 import CardInspectModal from '../components/gallery/CardInspectModal';
 import MessageModal from '../components/layout/MessageModal';
@@ -27,6 +27,8 @@ function filterFromParams(raw: string | null): 'all' | 'images' | 'videos' {
 
 export default function GalleryPage() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const filter = filterFromParams(searchParams.get('gf'));
   const selectedTagIds = useMemo(() => parseSearchTagIds(searchParams), [searchParams]);
   const cardIdExact = useMemo(() => parseSearchCardId(searchParams), [searchParams]);
@@ -41,6 +43,14 @@ export default function GalleryPage() {
   const [tagsIndex, setTagsIndex] = useState<Map<string, TagRecord>>(new Map());
   const [moodboardCardIds, setMoodboardCardIds] = useState<Set<string>>(new Set());
   const [infoModalMessage, setInfoModalMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const w = (location.state as { importWarnings?: string[] } | undefined)?.importWarnings;
+    if (w && w.length > 0) {
+      setInfoModalMessage(`Часть файлов не импортирована:\n\n${w.join('\n\n')}`);
+      navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+    }
+  }, [location.pathname, location.search, location.state, navigate]);
 
   const loadMoodboard = useCallback(async () => {
     const ids = await getMoodboardCardIds();

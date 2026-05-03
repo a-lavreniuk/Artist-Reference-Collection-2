@@ -1049,10 +1049,12 @@ export async function updateCardPayload(
 export async function deleteCard(cardId: string): Promise<void> {
   const b = await resolveBackend();
   let relPath: string | null = null;
+  let thumbPath: string | null = null;
 
   if (b === 'file' && metadataBlob) {
     const card = metadataBlob.cards.map(normalizeCardRecord).find((c) => c?.id === cardId) ?? null;
     relPath = card?.originalRelativePath ?? null;
+    thumbPath = card?.thumbRelativePath ?? null;
     metadataBlob.cards = metadataBlob.cards.filter((raw) => {
       const c = normalizeCardRecord(raw);
       return c?.id !== cardId;
@@ -1070,8 +1072,13 @@ export async function deleteCard(cardId: string): Promise<void> {
     safeWriteArray(STORAGE_KEYS.moodboard, mb);
   }
 
-  if (hasArcApi() && relPath) {
-    await window.arc!.deleteFileIfInsideLibrary(relPath);
+  if (hasArcApi()) {
+    if (relPath) {
+      await window.arc!.deleteFileIfInsideLibrary(relPath);
+    }
+    if (thumbPath && thumbPath !== relPath) {
+      await window.arc!.deleteFileIfInsideLibrary(thumbPath);
+    }
   }
   notifyCardsChanged();
   notifyTagsChanged();

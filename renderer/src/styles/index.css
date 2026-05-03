@@ -630,11 +630,28 @@ button.color-swatch-inline:disabled {
   max-width: 100%;
   aspect-ratio: 1 / 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: center;
   overflow: hidden;
   padding: 0;
   border-radius: var(--radius-s);
+}
+
+.arc2-card-inspect-video-note {
+  flex-shrink: 0;
+  margin: 0;
+  padding: var(--s-2) var(--s-2) 0;
+  color: var(--text-elev-secondary);
+}
+
+.arc2-card-inspect-media-fit {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .arc2-card-inspect-img {
@@ -989,7 +1006,8 @@ button.color-swatch-inline:disabled {
   outline-offset: 2px;
 }
 
-.arc2-add-queue-tile-img {
+.arc2-add-queue-tile-img,
+.arc2-add-queue-tile-video {
   width: 100%;
   height: 100%;
   display: block;
@@ -1365,6 +1383,11 @@ button.color-swatch-inline:disabled {
 
 .arc2-add-busy {
   margin: 0;
+}
+
+/* Модалки: многострочный текст (частичный сбой импорта и т.п.) */
+.arc-modal__slot-text {
+  white-space: pre-wrap;
 }
 
 @media (max-width: 1200px) {

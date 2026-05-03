@@ -2,6 +2,22 @@ import type { ArcMetadataV1 } from './services/arcSchema';
 
 export {};
 
+export type ArcImportedMediaRow = {
+  id: string;
+  type: 'image' | 'video';
+  originalRelativePath: string;
+  thumbRelativePath: string;
+  fileSize: number;
+  fileSizeMb?: number;
+  addedAt: string;
+  dateModified?: string;
+  width?: number;
+  height?: number;
+  format?: string;
+};
+
+export type ArcImportFileResult = { ok: true; row: ArcImportedMediaRow } | { ok: false; error: string };
+
 declare global {
   interface Window {
     arc?: {
@@ -11,23 +27,8 @@ declare global {
       readMetadata: () => Promise<ArcMetadataV1 | null>;
       writeMetadata: (data: ArcMetadataV1) => Promise<void>;
       pickImageFiles: () => Promise<string[]>;
-      importFiles: (
-        absolutePaths: string[]
-      ) => Promise<
-        Array<{
-          id: string;
-          type: 'image';
-          originalRelativePath: string;
-          thumbRelativePath: string;
-          fileSize: number;
-          fileSizeMb?: number;
-          addedAt: string;
-          dateModified?: string;
-          width?: number;
-          height?: number;
-          format?: string;
-        }>
-      >;
+      pickMediaFiles: () => Promise<string[]>;
+      importFiles: (absolutePaths: string[]) => Promise<ArcImportFileResult[]>;
       /** Относительный путь внутри библиотеки или абсолютный путь к файлу на диске (для предпросмотра до импорта). */
       toFileUrl: (path: string) => Promise<string | null>;
       deleteFileIfInsideLibrary: (relativePath: string) => Promise<void>;

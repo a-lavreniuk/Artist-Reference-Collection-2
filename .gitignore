@@ -1,6 +1,7 @@
 node_modules/
 renderer/dist/
-main/
-preload/
+# Сборка tsc (только корень репозитория, не src/main и не src/preload)
+/main/
+/preload/
 dist/
 npm-debug.log*
