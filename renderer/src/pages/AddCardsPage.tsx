@@ -1,20 +1,32 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { hydrateArc2NavbarIcons } from '../components/layout/navbarIconHydrate';
-import { ARC2_ADD_CARDS_SUBMIT_REQUEST } from '../components/layout/navbarEvents';
+import { ARC2_ADD_CARDS_SUBMIT_REQUEST, publishAddCardsQueueState } from '../components/layout/navbarEvents';
+import TagChipToggleWithTooltip from '../components/tags/TagChipToggleWithTooltip';
+import TagSettingsModal, { type TagSettingsModalState } from '../components/tags/TagSettingsModal';
 import {
+  ARC2_CATEGORIES_CHANGED_EVENT,
+  ARC2_TAGS_CHANGED_EVENT,
+  addTag,
+  deleteTag,
   getAllCategories,
   getTagsByCategory,
   getAllCollections,
   getCollectionCardCounts,
   insertImportedCards,
   isLibraryConfigured,
+  updateTag,
   type TagRecord,
   type CollectionRecord,
   type CategoryRecord
 } from '../services/db';
 
 const MAX_QUEUE = 25;
+
+function capQueueItems(items: QueueItem[]): QueueItem[] {
+  if (items.length <= MAX_QUEUE) return items;
+  return items.slice(0, MAX_QUEUE);
+}
 
 type QueueItem = {
   key: string;
@@ -26,9 +38,39 @@ type QueueItem = {
 
 type TabKey = 'tags' | 'collections' | 'description';
 
+/** Порядок как в EL-TABS-DEFAULT / экран настройки карточки */
+const ADD_CARD_TAB_ORDER: TabKey[] = ['tags', 'description', 'collections'];
+
 function basename(p: string): string {
   const parts = p.replace(/\\/g, '/').split('/');
   return parts[parts.length - 1] || p;
+}
+
+function normalizeFsPathForCompare(p: string): string {
+  return p.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+}
+
+/** Превращает абсолютный путь файла в относительный путь внутри корня библиотеки (POSIX slashes). */
+function absolutePathToLibraryRelative(absPath: string, libraryRootAbs: string): string | null {
+  const abs = normalizeFsPathForCompare(absPath);
+  const root = normalizeFsPathForCompare(libraryRootAbs);
+  if (!abs.startsWith(`${root}/`) && abs !== root) return null;
+  const raw = abs.slice(root.length).replace(/^\/+/, '');
+  return raw;
+}
+
+async function resolvePreviewUrlForAbsolutePath(absPath: string, libraryRootAbs: string | null): Promise<string | null> {
+  if (!window.arc) return null;
+
+  if (libraryRootAbs) {
+    const rel = absolutePathToLibraryRelative(absPath, libraryRootAbs);
+    if (rel) {
+      const url = await window.arc.toFileUrl(rel);
+      if (url) return url;
+    }
+  }
+
+  return await window.arc.toFileUrl(absPath);
 }
 
 function extractFormat(pathLike: string): string | undefined {
@@ -59,6 +101,8 @@ export default function AddCardsPage() {
   const navigate = useNavigate();
   const hostRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const [libraryRootAbs, setLibraryRootAbs] = useState<string | null>(null);
+  const [previewUrlsByKey, setPreviewUrlsByKey] = useState<Record<string, string | null>>({});
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [tab, setTab] = useState<TabKey>('tags');
@@ -72,8 +116,63 @@ export default function AddCardsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [dragDepth, setDragDepth] = useState(0);
+  const [queueStripDragging, setQueueStripDragging] = useState(false);
+  const [tagModal, setTagModal] = useState<TagSettingsModalState | null>(null);
+  const [tagsSettingsToast, setTagsSettingsToast] = useState<'copy' | 'apply' | null>(null);
+  const tagsSettingsToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const queueStripRef = useRef<HTMLDivElement>(null);
+  const stripDragRef = useRef<{
+    pointerId: number | null;
+    startClientX: number;
+    initialScrollLeft: number;
+    dragging: boolean;
+  } | null>(null);
+  const suppressQueueTileClickRef = useRef(false);
+  const activeIndexRef = useRef(activeIndex);
+  activeIndexRef.current = activeIndex;
 
   const active = queue[activeIndex];
+
+  const onAddTabListKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return;
+      e.preventDefault();
+      const keys = ADD_CARD_TAB_ORDER;
+      const i = keys.indexOf(tab);
+      let next: TabKey = tab;
+      if (e.key === 'Home') next = keys[0];
+      else if (e.key === 'End') next = keys[keys.length - 1];
+      else if (e.key === 'ArrowRight') next = keys[(i + 1) % keys.length];
+      else if (e.key === 'ArrowLeft') next = keys[(i - 1 + keys.length) % keys.length];
+      if (next !== tab) {
+        setTab(next);
+        queueMicrotask(() => {
+          document.getElementById(`arc2-add-tab-${next}`)?.focus();
+        });
+      }
+    },
+    [tab]
+  );
+
+  useLayoutEffect(() => {
+    const n = queue.length;
+    publishAddCardsQueueState({ hasItems: n > 0, count: n });
+  }, [queue]);
+
+  useEffect(() => {
+    return () => {
+      publishAddCardsQueueState({ hasItems: false, count: 0 });
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (tagsSettingsToastTimerRef.current) {
+        window.clearTimeout(tagsSettingsToastTimerRef.current);
+      }
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (hostRef.current) {
@@ -97,9 +196,45 @@ export default function AddCardsPage() {
   useEffect(() => {
     void (async () => {
       setReady(await isLibraryConfigured());
+      if (window.arc) {
+        setLibraryRootAbs(await window.arc.getLibraryPath());
+      } else {
+        setLibraryRootAbs(null);
+      }
       await reloadCatalog();
     })();
   }, [reloadCatalog]);
+
+  useEffect(() => {
+    const onRefresh = () => void reloadCatalog();
+    window.addEventListener(ARC2_CATEGORIES_CHANGED_EVENT, onRefresh);
+    window.addEventListener(ARC2_TAGS_CHANGED_EVENT, onRefresh);
+    return () => {
+      window.removeEventListener(ARC2_CATEGORIES_CHANGED_EVENT, onRefresh);
+      window.removeEventListener(ARC2_TAGS_CHANGED_EVENT, onRefresh);
+    };
+  }, [reloadCatalog]);
+
+  useEffect(() => {
+    if (!queue.length) {
+      setPreviewUrlsByKey({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const next: Record<string, string | null> = {};
+      await Promise.all(
+        queue.map(async (item) => {
+          const url = await resolvePreviewUrlForAbsolutePath(item.absPath, libraryRootAbs);
+          if (!cancelled) next[item.key] = url;
+        })
+      );
+      if (!cancelled) setPreviewUrlsByKey(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [queue, libraryRootAbs]);
 
   const handleSubmitAll = useCallback(async () => {
     setError(null);
@@ -111,20 +246,14 @@ export default function AddCardsPage() {
       setError('Добавьте хотя бы один файл.');
       return;
     }
-    const missing = queue.findIndex((q) => q.tagIds.length === 0);
-    if (missing >= 0) {
-      setActiveIndex(missing);
-      setTab('tags');
-      setError(`Назначьте хотя бы одну метку для файла ${missing + 1} в очереди.`);
-      return;
-    }
     if (!window.arc) {
       setError('Импорт доступен только в Electron.');
       return;
     }
     setBusy(true);
     try {
-      const imported = await window.arc.importFiles(queue.map((q) => q.absPath));
+      const cappedQueue = capQueueItems(queue);
+      const imported = await window.arc.importFiles(cappedQueue.map((q) => q.absPath));
       const merged = await Promise.all(
         imported.map(async (row, i) => {
           const dimensions = row.width && row.height ? { width: row.width, height: row.height } : await getImageSizeByRelativePath(row.originalRelativePath);
@@ -132,16 +261,17 @@ export default function AddCardsPage() {
             typeof row.fileSizeMb === 'number' && Number.isFinite(row.fileSizeMb)
               ? row.fileSizeMb
               : toMegabytes(row.fileSize);
+          const src = cappedQueue[i];
           return {
             ...row,
             type: 'image' as const,
-            format: row.format ?? extractFormat(row.originalRelativePath) ?? extractFormat(queue[i].absPath),
+            format: row.format ?? extractFormat(row.originalRelativePath) ?? extractFormat(src.absPath),
             dateModified: row.dateModified ?? row.addedAt,
             fileSizeMb,
             ...(dimensions ? dimensions : {}),
-            tagIds: queue[i].tagIds,
-            collectionIds: queue[i].collectionIds,
-            ...(queue[i].description.trim() ? { description: queue[i].description.trim() } : {})
+            tagIds: src.tagIds,
+            collectionIds: src.collectionIds,
+            ...(src.description.trim() ? { description: src.description.trim() } : {})
           };
         })
       );
@@ -162,12 +292,18 @@ export default function AddCardsPage() {
 
   const appendPaths = useCallback((paths: string[]) => {
     setQueue((prev) => {
-      const remaining = Math.max(0, MAX_QUEUE - prev.length);
+      const safePrev = capQueueItems(prev);
+      if (safePrev.length < prev.length) {
+        requestAnimationFrame(() =>
+          setError(`В очереди не больше ${MAX_QUEUE} файлов — лишнее отброшено.`)
+        );
+      }
+      const remaining = Math.max(0, MAX_QUEUE - safePrev.length);
       if (remaining <= 0) {
         requestAnimationFrame(() =>
           setError(`В очереди уже ${MAX_QUEUE} файлов — удалите часть или завершите импорт.`)
         );
-        return prev;
+        return safePrev;
       }
       const slice = paths.slice(0, remaining).map((absPath) => ({
         key: `${crypto.randomUUID?.() ?? String(Math.random())}-${basename(absPath)}`,
@@ -176,14 +312,20 @@ export default function AddCardsPage() {
         collectionIds: [],
         description: ''
       }));
-      if (paths.length > remaining) {
+      const nextItems = [...safePrev, ...slice];
+      const merged = capQueueItems(nextItems);
+      if (merged.length < nextItems.length) {
+        requestAnimationFrame(() =>
+          setError(`В очереди не больше ${MAX_QUEUE} файлов — лишнее отброшено.`)
+        );
+      } else if (paths.length > remaining) {
         requestAnimationFrame(() =>
           setError(`Добавлено ${slice.length} из ${paths.length} файлов (лимит очереди ${MAX_QUEUE}).`)
         );
       } else {
         requestAnimationFrame(() => setError(null));
       }
-      return [...prev, ...slice];
+      return merged;
     });
   }, []);
 
@@ -192,13 +334,65 @@ export default function AddCardsPage() {
       setError('Доступно только в Electron.');
       return;
     }
-    if (queue.length >= MAX_QUEUE) {
-      setError(`В очереди уже ${MAX_QUEUE} файлов.`);
-      return;
-    }
     const paths = await window.arc.pickImageFiles();
     if (!paths.length) return;
     appendPaths(paths);
+  };
+
+  const onQueueStripPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.arc2-add-queue-remove-btn, .arc2-add-queue-add-tile')) return;
+    const el = queueStripRef.current;
+    if (!el) return;
+    /* Без setPointerCapture здесь: иначе клик по превью уходит в полосу и не открывает настройки элемента. */
+    stripDragRef.current = {
+      pointerId: e.pointerId,
+      startClientX: e.clientX,
+      initialScrollLeft: el.scrollLeft,
+      dragging: false
+    };
+  };
+
+  const onQueueStripPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = stripDragRef.current;
+    const el = queueStripRef.current;
+    if (!d || !el || d.pointerId !== e.pointerId) return;
+    const dx = e.clientX - d.startClientX;
+    if (!d.dragging) {
+      if (Math.abs(dx) <= 6) return;
+      d.dragging = true;
+      suppressQueueTileClickRef.current = true;
+      setQueueStripDragging(true);
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+    e.preventDefault();
+    el.scrollLeft = d.initialScrollLeft - (e.clientX - d.startClientX);
+  };
+
+  const onQueueStripPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = stripDragRef.current;
+    const el = queueStripRef.current;
+    const wasDragging = Boolean(d?.dragging);
+    if (d?.dragging && d.pointerId === e.pointerId && el) {
+      try {
+        el.releasePointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (wasDragging) {
+      window.setTimeout(() => {
+        suppressQueueTileClickRef.current = false;
+      }, 0);
+    } else {
+      suppressQueueTileClickRef.current = false;
+    }
+    stripDragRef.current = null;
+    setQueueStripDragging(false);
   };
 
   const onDragOver = (e: React.DragEvent) => {
@@ -239,7 +433,10 @@ export default function AddCardsPage() {
   };
 
   const updateActive = (patch: Partial<QueueItem>) => {
-    setQueue((prev) => prev.map((item, i) => (i === activeIndex ? { ...item, ...patch } : item)));
+    setQueue((prev) => {
+      const i = activeIndexRef.current;
+      return prev.map((item, idx) => (idx === i ? { ...item, ...patch } : item));
+    });
   };
 
   const toggleTag = (tagId: string) => {
@@ -269,14 +466,35 @@ export default function AddCardsPage() {
     });
   };
 
+  const showTagsSettingsToast = (kind: 'copy' | 'apply') => {
+    setTagsSettingsToast(kind);
+    if (tagsSettingsToastTimerRef.current) {
+      window.clearTimeout(tagsSettingsToastTimerRef.current);
+    }
+    tagsSettingsToastTimerRef.current = window.setTimeout(() => {
+      setTagsSettingsToast(null);
+      tagsSettingsToastTimerRef.current = null;
+    }, 2400);
+  };
+
   const copyTags = () => {
     if (!active) return;
-    setClipboardTagIds([...active.tagIds]);
+    if (
+      active.tagIds.length === 0 &&
+      active.description.trim().length === 0 &&
+      active.collectionIds.length === 0
+    ) {
+      return;
+    }
+    /* В буфер всегда кладём массив (в т.ч. []): «не скопировано» отличаем только null — иначе нельзя применить пустой набор меток ко второй карточке. */
+    setClipboardTagIds([...(active.tagIds ?? [])]);
+    showTagsSettingsToast('copy');
   };
 
   const applyTags = () => {
-    if (!clipboardTagIds?.length) return;
+    if (clipboardTagIds === null) return;
     updateActive({ tagIds: [...clipboardTagIds] });
+    showTagsSettingsToast('apply');
   };
 
   const filteredTags = useMemo(() => {
@@ -298,6 +516,16 @@ export default function AddCardsPage() {
   }, [collections, colSearch]);
 
   const descFilled = Boolean(active?.description.trim());
+  const activePreviewSrc = active ? previewUrlsByKey[active.key] ?? null : null;
+
+  const canCopyActiveCardSettings = useMemo(() => {
+    if (!active) return false;
+    return (
+      active.tagIds.length > 0 ||
+      active.description.trim().length > 0 ||
+      active.collectionIds.length > 0
+    );
+  }, [active]);
 
   if (!ready) {
     return (
@@ -310,229 +538,330 @@ export default function AddCardsPage() {
   const dropzoneActive = dragDepth > 0;
 
   return (
-    <div ref={hostRef} className="arc2-add-page">
+    <div
+      ref={hostRef}
+      className={`arc2-add-page${queue.length === 0 ? ' arc2-add-page--empty' : ' arc2-add-page--with-queue'}`}
+    >
       {queue.length === 0 ? (
         <div
-          className={`arc2-add-dropzone panel elevation-default${dropzoneActive ? ' arc2-add-dropzone--dropping' : ''}`}
+          className={`arc2-add-dropzone panel elevation-sunken${dropzoneActive ? ' arc2-add-dropzone--dropping' : ''}`}
+          data-elevation="sunken"
           onDragEnter={onDragEnter}
           onDragLeave={onDragLeave}
           onDragOver={onDragOver}
           onDrop={onDrop}
         >
           <div className="arc2-add-dropzone-inner">
-            <span className="arc2-add-dropzone-icon tab-icon arc2-icon-images" aria-hidden="true" />
-            <p className="text-l arc2-add-dropzone-title">Перетащите изображения сюда</p>
-            <p className="text-s arc2-add-dropzone-sub">
-              До {MAX_QUEUE} файлов за раз. При необходимости нажмите кнопку — откроется диалог выбора.
+            <p className="h3 arc2-add-dropzone-title">Добавить изображение или видео...</p>
+            <p className="typo-p-m arc2-add-dropzone-sub">
+              Можно перетащить файлы в это окно или нажать на кнопку. Допускается загрузка нескольких файлов
+              одновременно, но не более 25-ти в очереди.
             </p>
             <button type="button" className="btn btn-primary btn-ds arc2-add-dropzone-cta" onClick={() => void pickFiles()}>
-              <span className="btn-ds__value">Выбрать файлы</span>
-              <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true" />
+              <span className="btn-ds__value">Добавить</span>
+              <span className="btn-ds__icon arc2-add-dropzone-plus-icon" aria-hidden="true" />
             </button>
           </div>
         </div>
       ) : (
         <div className="arc2-add-with-queue">
-          <div className="arc2-add-queue-head">
-            <div className="arc2-add-queue-summary">
-              <p className="text-l arc2-add-queue-title">Очередь</p>
-              <span className="text-s arc2-add-queue-limit">
-                {queue.length} / {MAX_QUEUE}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="btn btn-outline btn-ds"
-              disabled={queue.length >= MAX_QUEUE}
-              onClick={() => void pickFiles()}
-            >
-              <span className="btn-ds__value">Добавить файлы</span>
-              <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true" />
-            </button>
-          </div>
-
-          <div className="arc2-add-queue-scroll panel elevation-default" role="list">
+          <div
+            ref={queueStripRef}
+            className={`arc2-add-queue-scroll panel elevation-default${queueStripDragging ? ' is-dragging-queue' : ''}`}
+            role="list"
+            onPointerDown={onQueueStripPointerDown}
+            onPointerMove={onQueueStripPointerMove}
+            onPointerUp={onQueueStripPointerEnd}
+            onPointerCancel={onQueueStripPointerEnd}
+          >
             {queue.map((item, i) => {
               const isActive = i === activeIndex;
+              const previewSrc = previewUrlsByKey[item.key];
+              const fileLabel = basename(item.absPath);
               return (
                 <div
                   key={item.key}
-                  className={`arc2-add-queue-row${isActive ? ' is-active' : ''}`}
+                  className={`arc2-add-queue-tile${isActive ? ' is-active' : ''}`}
                   role="listitem"
                 >
-                  <button type="button" className="arc2-add-queue-main" onClick={() => setActiveIndex(i)}>
-                    <span className="arc2-add-queue-thumb" aria-hidden="true" />
-                    <span className="arc2-add-queue-textblock">
-                      <span className="text-m arc2-add-queue-name">{basename(item.absPath)}</span>
-                      {item.tagIds.length > 0 ? (
-                        <span className="arc2-add-queue-tag-hint text-s">{item.tagIds.length} меток</span>
-                      ) : (
-                        <span className="arc2-add-queue-tag-hint arc2-add-queue-tag-hint--warn text-s">
-                          Нужна метка
-                        </span>
-                      )}
-                    </span>
-                  </button>
                   <button
                     type="button"
-                    className="btn btn-outline btn-icon-only btn-ds arc2-add-queue-remove-btn"
-                    aria-label={`Убрать из очереди ${basename(item.absPath)}`}
-                    onClick={() => removeFromQueue(item.key)}
+                    className="arc2-add-queue-tile-main"
+                    onClick={() => {
+                      if (suppressQueueTileClickRef.current) {
+                        suppressQueueTileClickRef.current = false;
+                        return;
+                      }
+                      setActiveIndex(i);
+                    }}
+                    aria-label={`Выбрать в очереди: ${fileLabel}`}
                   >
-                    <span className="btn-icon-only__glyph arc2-icon-close" aria-hidden="true" />
+                    {previewSrc ? (
+                      <img className="arc2-add-queue-tile-img" src={previewSrc} alt="" loading="lazy" decoding="async" />
+                    ) : null}
                   </button>
+                  <div className="arc-ui-kit-scope arc2-add-queue-tile-remove" data-btn-size="s">
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-icon-only btn-ds arc2-add-queue-remove-btn"
+                      aria-label={`Убрать из очереди ${fileLabel}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFromQueue(item.key);
+                      }}
+                    >
+                      <span className="btn-icon-only__glyph arc2-add-queue-remove-icon" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
+            {queue.length < MAX_QUEUE ? (
+              <button
+                type="button"
+                className="arc2-add-queue-add-tile"
+                onClick={() => void pickFiles()}
+                aria-label={`Добавить файлы в очередь (${queue.length} из ${MAX_QUEUE})`}
+                title={`${queue.length} / ${MAX_QUEUE}`}
+              >
+                <span className="arc2-add-queue-add-tile-plus" aria-hidden="true" />
+              </button>
+            ) : null}
           </div>
 
           {active ? (
-            <div className="arc2-add-editor panel elevation-default">
-              <div className="tabs arc2-add-tabs" role="tablist" aria-label="Настройка карточки">
-                {(
-                  [
-                    ['tags', 'Метки', active.tagIds.length],
-                    ['collections', 'Коллекции', active.collectionIds.length],
-                    ['description', 'Описание', descFilled ? 1 : 0]
-                  ] as const
-                ).map(([key, label, count]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === key}
-                    className={`tab-button${tab === key ? ' is-active' : ''}`}
-                    onClick={() => setTab(key)}
-                  >
-                    <span>{label}</span>
-                    {key === 'description' ? (
-                      count > 0 ? (
-                        <span className="arc2-add-tab-dot" title="Есть текст" aria-hidden="true" />
-                      ) : null
-                    ) : count > 0 ? (
-                      <span className="tab-counter">{count}</span>
-                    ) : null}
-                  </button>
-                ))}
+            <div className="arc2-add-workspace">
+              <div className="arc2-add-preview panel">
+                {activePreviewSrc ? <img className="arc2-add-preview-image" src={activePreviewSrc} alt="" /> : null}
               </div>
 
-              {tab === 'tags' ? (
-                <div className="arc2-add-tab-body">
-                  <div className="arc2-add-toolbar">
+              <div
+                className="arc2-add-editor panel elevation-sunken arc-ui-kit-scope"
+                data-elevation="sunken"
+                data-typo-tone="white"
+                data-input-size="m"
+                data-btn-size="m"
+              >
+                <div
+                  className="tabs arc2-add-tabs"
+                  role="tablist"
+                  aria-label="Настройка карточки"
+                  aria-orientation="horizontal"
+                  onKeyDown={onAddTabListKeyDown}
+                >
+                  {(
+                    [
+                      ['tags', 'Метки', active.tagIds.length],
+                      ['description', 'Описание', descFilled ? 1 : 0],
+                      ['collections', 'Коллекции', active.collectionIds.length]
+                    ] as const
+                  ).map(([key, label, count]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      role="tab"
+                      id={`arc2-add-tab-${key}`}
+                      aria-selected={tab === key}
+                      aria-controls={`arc2-add-panel-${key}`}
+                      tabIndex={tab === key ? 0 : -1}
+                      className={`tab-button${tab === key ? ' is-active' : ''}`}
+                      onClick={() => setTab(key)}
+                    >
+                      <span>{label}</span>
+                      {key === 'description' ? (
+                        count > 0 ? (
+                          <span className="arc2-add-tab-dot" title="Есть текст" aria-hidden="true" />
+                        ) : null
+                      ) : count > 0 ? (
+                        <span className="tab-counter">{count}</span>
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="arc2-add-tab-panels">
+                <div
+                  role="tabpanel"
+                  id="arc2-add-panel-tags"
+                  aria-labelledby="arc2-add-tab-tags"
+                  hidden={tab !== 'tags'}
+                  className="arc2-add-tab-body"
+                >
+                    <div className="arc2-add-toolbar">
+                      <div className="field field-full input-live arc2-add-search">
+                        <div className="input input--size-m input-slots search-live">
+                          <span className="search-icon slot-leading arc2-icon-search" aria-hidden="true" />
+                          <input
+                            className="search-inner slot-value"
+                            placeholder="Поиск метки или категории"
+                            value={tagSearch}
+                            onChange={(e) => setTagSearch(e.target.value)}
+                            aria-label="Поиск метки или категории"
+                          />
+                        </div>
+                      </div>
+                      <div className="btn-group btn-group-ds arc2-add-tags-btn-group">
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-ds btn-icon-only"
+                          onClick={copyTags}
+                          disabled={!canCopyActiveCardSettings}
+                          aria-label="Скопировать настройки"
+                          title={
+                            canCopyActiveCardSettings
+                              ? undefined
+                              : 'Сначала выберите метку, опишите карточку или укажите коллекцию'
+                          }
+                        >
+                          <span className="btn-icon-only__glyph arc2-add-copy-settings-icon" aria-hidden="true" />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline btn-ds btn-icon-only"
+                          onClick={applyTags}
+                          disabled={clipboardTagIds === null}
+                          aria-label="Применить настройки"
+                        >
+                          <span className="btn-icon-only__glyph arc2-add-apply-tags-icon" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="arc2-add-tags-scroll">
+                      {filteredTags.length === 0 ? (
+                        <p className="hint">Нет совпадений поиска или категорий.</p>
+                      ) : (
+                        <div className="arc2-add-tags-categories">
+                          {filteredTags.map(({ cat, tags }, index) => (
+                            <div key={cat.id} className="arc2-add-tag-category-row">
+                              <p className="text-m arc2-add-tag-category-title">{cat.name}</p>
+                              <div className="arc2-add-tag-chips-column">
+                                {index > 0 ? (
+                                  <div className="arc2-add-tag-sep" role="separator" aria-hidden="true" />
+                                ) : null}
+                                <div className="tags-row arc2-add-tag-chips--with-add">
+                                  {tags.map((t) => (
+                                    <TagChipToggleWithTooltip
+                                      key={t.id}
+                                      tag={t}
+                                      categoryColorHex={cat.colorHex}
+                                      selected={active.tagIds.includes(t.id)}
+                                      onToggle={() => toggleTag(t.id)}
+                                    />
+                                  ))}
+                                  <div
+                                    className="arc-ui-kit-scope"
+                                    data-elevation="sunken"
+                                    data-typo-tone="white"
+                                    data-btn-size="s"
+                                  >
+                                    <button
+                                      type="button"
+                                      className="btn btn-outline btn-ds btn-icon-only arc2-add-tag-new-btn"
+                                      onClick={() => setTagModal({ mode: 'create', categoryId: cat.id })}
+                                      aria-label={`Добавить метку в категорию «${cat.name}»`}
+                                      title="Новая метка"
+                                    >
+                                      <span className="btn-icon-only__glyph arc2-icon-plus" aria-hidden="true" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                </div>
+
+                <div
+                  role="tabpanel"
+                  id="arc2-add-panel-description"
+                  aria-labelledby="arc2-add-tab-description"
+                  hidden={tab !== 'description'}
+                  className="arc2-add-tab-body arc2-add-tab-body--description"
+                >
+                    <div className="field field-full">
+                      <textarea
+                        id="arc2AddDesc"
+                        className="input textarea arc2-add-textarea"
+                        rows={8}
+                        placeholder="Кратко опишите содержимое — текст сохранится на карточке."
+                        value={active.description}
+                        onChange={(e) => updateActive({ description: e.target.value })}
+                        aria-label="Описание карточки"
+                      />
+                    </div>
+                </div>
+
+                <div
+                  role="tabpanel"
+                  id="arc2-add-panel-collections"
+                  aria-labelledby="arc2-add-tab-collections"
+                  hidden={tab !== 'collections'}
+                  className="arc2-add-tab-body"
+                >
                     <div className="field field-full input-live arc2-add-search">
                       <div className="input input--size-m input-slots search-live">
                         <span className="search-icon slot-leading arc2-icon-search" aria-hidden="true" />
                         <input
                           className="search-inner slot-value"
-                          placeholder="Поиск метки или категории"
-                          value={tagSearch}
-                          onChange={(e) => setTagSearch(e.target.value)}
-                          aria-label="Поиск метки или категории"
+                          placeholder="Поиск коллекции"
+                          value={colSearch}
+                          onChange={(e) => setColSearch(e.target.value)}
+                          aria-label="Поиск коллекции"
                         />
                       </div>
                     </div>
-                    <button type="button" className="btn btn-secondary btn-ds" onClick={copyTags}>
-                      <span className="btn-ds__value">Копировать метки</span>
-                      <span className="btn-ds__icon arc2-icon-copy" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-ds"
-                      onClick={applyTags}
-                      disabled={!clipboardTagIds?.length}
-                    >
-                      <span className="btn-ds__value">Применить метки</span>
-                    </button>
-                  </div>
-                  <div className="arc2-add-tags-scroll">
-                    {filteredTags.map(({ cat, tags }) => (
-                      <div key={cat.id} className="arc2-add-tag-group">
-                        <p className="text-m arc2-add-tag-group-title">
-                          <span className="arc2-add-cat-dot" style={{ background: cat.colorHex }} aria-hidden />
-                          {cat.name}
-                        </p>
-                        <div className="arc2-add-tag-chips">
-                          {tags.map((t) => {
-                            const sel = active.tagIds.includes(t.id);
-                            return (
-                              <button
-                                key={t.id}
-                                type="button"
-                                className={`arc2-add-tag-chip${sel ? ' is-selected' : ''}`}
-                                onClick={() => toggleTag(t.id)}
-                              >
-                                <span className="arc2-add-tag-chip-dot" style={{ background: cat.colorHex }} aria-hidden />
-                                <span className="arc2-add-tag-chip-name">{t.name}</span>
-                                <span className="arc2-add-tag-chip-count">{t.usageCount}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-
-              {tab === 'collections' ? (
-                <div className="arc2-add-tab-body">
-                  <div className="field field-full input-live arc2-add-search">
-                    <div className="input input--size-m input-slots search-live">
-                      <span className="search-icon slot-leading arc2-icon-search" aria-hidden="true" />
-                      <input
-                        className="search-inner slot-value"
-                        placeholder="Поиск коллекции"
-                        value={colSearch}
-                        onChange={(e) => setColSearch(e.target.value)}
-                        aria-label="Поиск коллекции"
-                      />
+                    <div className="arc2-add-collection-chips">
+                      {filteredCols.map((c) => {
+                        const sel = active.collectionIds.includes(c.id);
+                        const n = collCounts[c.id] ?? 0;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className={`arc2-add-collection-chip${sel ? ' is-selected' : ''}`}
+                            onClick={() => toggleCollection(c.id)}
+                          >
+                            <span className="arc2-add-collection-chip-name">{c.name}</span>
+                            <span className="arc2-add-collection-chip-count">{n}</span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </div>
-                  <div className="arc2-add-collection-chips">
-                    {filteredCols.map((c) => {
-                      const sel = active.collectionIds.includes(c.id);
-                      const n = collCounts[c.id] ?? 0;
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className={`arc2-add-collection-chip${sel ? ' is-selected' : ''}`}
-                          onClick={() => toggleCollection(c.id)}
-                        >
-                          <span className="arc2-add-collection-chip-name">{c.name}</span>
-                          <span className="arc2-add-collection-chip-count">{n}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {filteredCols.length === 0 ? <p className="hint">Коллекций не найдено</p> : null}
+                    {filteredCols.length === 0 ? <p className="hint">Коллекций не найдено</p> : null}
                 </div>
-              ) : null}
-
-              {tab === 'description' ? (
-                <div className="arc2-add-tab-body arc2-add-tab-body--description">
-                  <div className="field field-full">
-                    <div className="arc2-add-desc-head">
-                      <label className="field-label text-m" htmlFor="arc2AddDesc">
-                        Описание
-                      </label>
-                      <span className="text-s arc2-add-desc-counter">{active.description.length}</span>
-                    </div>
-                    <textarea
-                      id="arc2AddDesc"
-                      className="input textarea arc2-add-textarea"
-                      rows={8}
-                      placeholder="Кратко опишите содержимое — текст сохранится на карточке."
-                      value={active.description}
-                      onChange={(e) => updateActive({ description: e.target.value })}
-                    />
-                  </div>
                 </div>
-              ) : null}
+              </div>
             </div>
           ) : null}
         </div>
       )}
+
+      {tagModal ? (
+        <TagSettingsModal
+          state={tagModal}
+          categories={categories}
+          onClose={() => setTagModal(null)}
+          onCreate={async (payload) => {
+            await addTag(payload.categoryId, payload.name, {
+              description: payload.description,
+              tooltipImageDataUrl: payload.tooltipImageDataUrl
+            });
+          }}
+          onSave={async (payload) => {
+            await updateTag(payload.tagId, {
+              name: payload.name,
+              categoryId: payload.categoryId,
+              description: payload.description,
+              tooltipImageDataUrl: payload.tooltipImageDataUrl
+            });
+          }}
+          onDelete={async (tagId) => {
+            await deleteTag(tagId);
+          }}
+        />
+      ) : null}
 
       {error ? (
         <p className="hint input-inline-error arc2-add-error panel elevation-default" role="alert">
@@ -541,6 +870,33 @@ export default function AddCardsPage() {
       ) : null}
 
       {busy ? <p className="hint arc2-add-busy">Импортирование…</p> : null}
+
+      {tagsSettingsToast ? (
+        <div className="demo-alert-host" aria-live="polite" aria-atomic="true">
+          <div className="alert alert-success" role="status">
+            <p className="demo-alert__message">
+              {tagsSettingsToast === 'copy' ? 'Настройки скопированы.' : 'Настройки применены.'}
+            </p>
+            <button
+              type="button"
+              className="demo-alert__close"
+              aria-label="Закрыть уведомление"
+              onClick={() => {
+                setTagsSettingsToast(null);
+                if (tagsSettingsToastTimerRef.current) {
+                  window.clearTimeout(tagsSettingsToastTimerRef.current);
+                  tagsSettingsToastTimerRef.current = null;
+                }
+              }}
+            >
+              <svg className="demo-alert__close-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M6 6L18 18" strokeWidth="2" strokeLinecap="round" />
+                <path d="M18 6L6 18" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

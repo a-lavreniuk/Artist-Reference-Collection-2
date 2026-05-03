@@ -69,7 +69,7 @@ export default function GalleryBoard({ cards, onOpenCard, onFindSimilar, moodboa
         >
           <span className="arc2-gallery-card-stack">
             <span className="arc2-gallery-card-badge" aria-hidden="true" data-btn-size="s">
-              <span className={`tab-icon ${mediaTypeIconClass}`} style={{ color: 'var(--gray-50)' }} />
+              <span className={`tab-icon ${mediaTypeIconClass}`} />
             </span>
             {srcMap[card.id] ? (
               <img className="arc2-gallery-thumb" src={srcMap[card.id]} alt="" loading="lazy" decoding="async" />

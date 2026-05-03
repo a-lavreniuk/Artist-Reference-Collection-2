@@ -28,7 +28,8 @@ declare global {
           format?: string;
         }>
       >;
-      toFileUrl: (relativePath: string) => Promise<string | null>;
+      /** Относительный путь внутри библиотеки или абсолютный путь к файлу на диске (для предпросмотра до импорта). */
+      toFileUrl: (path: string) => Promise<string | null>;
       deleteFileIfInsideLibrary: (relativePath: string) => Promise<void>;
       showItemInFolder: (relativePath: string) => Promise<void>;
       saveMediaToFolder: (

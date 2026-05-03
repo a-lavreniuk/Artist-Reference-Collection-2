@@ -9,7 +9,9 @@ import {
   type NavbarMetrics
 } from '../../services/db';
 import {
+  ARC2_ADD_CARDS_QUEUE_STATE_EVENT,
   ARC2_ADD_CARDS_SUBMIT_REQUEST,
+  getLastAddCardsQueueState,
   ARC2_EDIT_CARD_SUBMIT_REQUEST,
   ARC2_COLLECTIONS_ADD_REQUEST,
   ARC2_NAVBAR_COLLECTION_TITLE_EVENT
@@ -73,6 +75,8 @@ export default function TopNavbar() {
   const [searchValue, setSearchValue] = useState('');
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [collectionDetailTitle, setCollectionDetailTitle] = useState('');
+  const [addQueueHasItems, setAddQueueHasItems] = useState(false);
+  const [addQueueCount, setAddQueueCount] = useState(0);
 
   const galleryFilter = searchParams.get('gf') ?? 'all';
   const moodboardFilter = searchParams.get('mf') ?? 'cards';
@@ -179,6 +183,27 @@ export default function TopNavbar() {
     window.addEventListener(ARC2_NAVBAR_COLLECTION_TITLE_EVENT, fn);
     return () => window.removeEventListener(ARC2_NAVBAR_COLLECTION_TITLE_EVENT, fn);
   }, []);
+
+  useEffect(() => {
+    const apply = (detail: { hasItems?: boolean; count?: number }) => {
+      setAddQueueHasItems(Boolean(detail.hasItems));
+      setAddQueueCount(typeof detail.count === 'number' ? detail.count : 0);
+    };
+    apply(getLastAddCardsQueueState());
+    const onQueueState = (event: Event) => {
+      const ce = event as CustomEvent<{ hasItems?: boolean; count?: number }>;
+      apply(ce.detail ?? {});
+    };
+    window.addEventListener(ARC2_ADD_CARDS_QUEUE_STATE_EVENT, onQueueState);
+    return () => window.removeEventListener(ARC2_ADD_CARDS_QUEUE_STATE_EVENT, onQueueState);
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== 'add') {
+      setAddQueueHasItems(false);
+      setAddQueueCount(0);
+    }
+  }, [activeView]);
 
   useEffect(() => {
     if (!showAddCategoryModal) {
@@ -359,14 +384,20 @@ export default function TopNavbar() {
                 onChange={setSettingsFilter}
               />
             )}
-            {activeView === 'add' && (
+            {activeView === 'add' && addQueueHasItems && (
               <div className="arc2-navbar-action-group">
                 <button className="btn btn-outline btn-ds" type="button" onClick={() => navigate('/gallery')}>
                   <span className="btn-ds__value">Отмена</span>
                 </button>
-                <button className="btn btn-success btn-ds" type="button" onClick={requestAddCardsSubmit}>
+                <button
+                  className="btn btn-success btn-ds arc2-navbar-add-submit"
+                  type="button"
+                  onClick={requestAddCardsSubmit}
+                  aria-label={`Добавить ${addQueueCount} карточек`}
+                >
                   <span className="btn-ds__value">Добавить</span>
-                  <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>
+                  <span className="btn-ds__counter">{addQueueCount}</span>
+                  <span className="btn-ds__icon arc2-navbar-add-submit-plus" aria-hidden="true"></span>
                 </button>
               </div>
             )}

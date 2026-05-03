@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useNavigate, useParams } from 'react-router-dom';
 import { ARC2_EDIT_CARD_SUBMIT_REQUEST } from '../components/layout/navbarEvents';
 import { hydrateArc2NavbarIcons } from '../components/layout/navbarIconHydrate';
+import TagChipToggleWithTooltip from '../components/tags/TagChipToggleWithTooltip';
 import {
   getAllCategories,
   getAllCollections,
@@ -158,7 +159,13 @@ export default function GalleryCardEditStubPage() {
 
   return (
     <div ref={hostRef} className="arc2-add-page">
-      <div className="arc2-add-editor panel elevation-default">
+      <div
+        className="arc2-add-editor panel elevation-default arc-ui-kit-scope"
+        data-elevation="default"
+        data-typo-tone="white"
+        data-input-size="m"
+        data-btn-size="m"
+      >
         <div className="tabs arc2-add-tabs" role="tablist" aria-label="Редактирование карточки">
           {(
             [
@@ -208,22 +215,16 @@ export default function GalleryCardEditStubPage() {
                     <span className="arc2-add-cat-dot" style={{ background: cat.colorHex }} aria-hidden />
                     {cat.name}
                   </p>
-                  <div className="arc2-add-tag-chips">
-                    {tags.map((t) => {
-                      const sel = tagIds.includes(t.id);
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          className={`arc2-add-tag-chip${sel ? ' is-selected' : ''}`}
-                          onClick={() => toggleTag(t.id)}
-                        >
-                          <span className="arc2-add-tag-chip-dot" style={{ background: cat.colorHex }} aria-hidden />
-                          <span className="arc2-add-tag-chip-name">{t.name}</span>
-                          <span className="arc2-add-tag-chip-count">{t.usageCount}</span>
-                        </button>
-                      );
-                    })}
+                  <div className="tags-row">
+                    {tags.map((t) => (
+                      <TagChipToggleWithTooltip
+                        key={t.id}
+                        tag={t}
+                        categoryColorHex={cat.colorHex}
+                        selected={tagIds.includes(t.id)}
+                        onToggle={() => toggleTag(t.id)}
+                      />
+                    ))}
                   </div>
                 </div>
               ))}

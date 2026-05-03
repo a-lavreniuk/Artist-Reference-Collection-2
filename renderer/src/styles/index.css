@@ -34,8 +34,18 @@ a {
   color: inherit;
 }
 
+.arc2-navbar-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 100vh;
+}
+
 .arc2-app-outlet {
-  min-height: calc(100vh - 140px);
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: hidden;
   padding: var(--s-3);
   border-radius: var(--radius-l);
@@ -388,24 +398,59 @@ button.color-swatch-inline:disabled {
   width: 24px;
   height: 24px;
   border-radius: var(--radius-s);
-  background: var(--Blur-Default, rgba(26, 26, 29, 0.2));
-  -webkit-backdrop-filter: blur(64px);
-  backdrop-filter: blur(64px);
-  color: var(--gray-50) !important;
   pointer-events: none;
 }
 
 .arc2-gallery-card-badge .tab-icon {
   width: 16px;
   height: 16px;
+}
+
+/* Единый blur/fill для бейджа и overlay-кнопок карточки */
+.arc2-gallery-card-badge,
+.arc2-card-slot-blur-btn {
+  background: var(--Blur-Default, rgba(26, 26, 29, 0.2));
+  -webkit-backdrop-filter: blur(64px);
+  backdrop-filter: blur(64px);
   color: var(--gray-50) !important;
 }
 
-.arc2-gallery-card-badge .arc-navbar-icon-svg [stroke] {
+.arc2-card-slot-blur-btn {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.arc2-card-slot-blur-btn:hover,
+.arc2-card-slot-blur-btn:focus-visible {
+  background: rgba(26, 26, 29, 0.5) !important;
+}
+
+.arc2-gallery-card-badge .arc-navbar-icon-svg [stroke],
+.arc2-card-slot-blur-btn .arc-navbar-icon-svg [stroke] {
   stroke: currentColor !important;
 }
 
-.arc2-gallery-card-badge .arc-navbar-icon-svg [fill]:not([fill="none"]) {
+.arc2-gallery-card-badge .arc-navbar-icon-svg [fill]:not([fill="none"]),
+.arc2-card-slot-blur-btn .arc-navbar-icon-svg [fill]:not([fill="none"]) {
+  fill: currentColor !important;
+}
+
+.arc2-card-slot-blur-btn .btn-ds__icon,
+.arc2-card-slot-blur-btn .btn-icon-only__glyph {
+  color: currentColor !important;
+}
+
+.arc2-card-slot-blur-btn .btn-ds__value {
+  color: currentColor !important;
+}
+
+.arc2-card-slot-blur-btn .btn-ds__icon [stroke],
+.arc2-card-slot-blur-btn .btn-icon-only__glyph [stroke] {
+  stroke: currentColor !important;
+}
+
+.arc2-card-slot-blur-btn .btn-ds__icon [fill]:not([fill="none"]),
+.arc2-card-slot-blur-btn .btn-icon-only__glyph [fill]:not([fill="none"]) {
   fill: currentColor !important;
 }
 
@@ -775,17 +820,27 @@ button.color-swatch-inline:disabled {
   max-width: 1120px;
   margin: 0 auto;
   width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.arc2-add-page--empty,
+.arc2-add-page--with-queue {
+  max-width: none;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .arc2-add-dropzone {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
   justify-content: center;
-  min-height: min(420px, 52vh);
+  min-height: 0;
   padding: var(--s-5);
   border-radius: var(--radius-l);
   border-style: dashed;
-  border-width: 2px;
+  border-width: 1px;
   border-color: var(--surface-border-default);
   background: var(--panel-bg);
   transition:
@@ -793,61 +848,73 @@ button.color-swatch-inline:disabled {
     background var(--transition-fast);
 }
 
+.arc2-add-dropzone:hover {
+  border-color: var(--input-border-focus);
+}
+
 .arc2-add-dropzone--dropping {
   border-color: var(--input-border-focus);
-  background: color-mix(in srgb, var(--gray-800) 65%, var(--panel-bg));
+  background: var(--panel-bg);
 }
 
 .arc2-add-dropzone-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--s-3);
   text-align: center;
-  max-width: 420px;
-}
-
-.arc2-add-dropzone-icon.tab-icon {
-  width: 56px;
-  height: 56px;
-  color: var(--text-elev-secondary);
+  max-width: 560px;
 }
 
 .arc2-add-dropzone-title {
   margin: 0;
+  margin-bottom: var(--s-1);
 }
 
 .arc2-add-dropzone-sub {
   margin: 0;
   color: var(--text-elev-secondary);
+  white-space: normal;
 }
 
 .arc2-add-dropzone-cta {
-  margin-top: var(--s-1);
+  margin-top: var(--s-4);
+  --btn-icon-size: 24px;
+}
+
+.arc2-add-dropzone-cta .btn-ds__icon {
+  width: var(--btn-icon-size);
+  height: var(--btn-icon-size);
+}
+
+.arc2-add-dropzone-plus-icon {
+  background-color: currentColor;
+  -webkit-mask: url("/ui/icons/plus_l.svg") center / contain no-repeat;
+  mask: url("/ui/icons/plus_l.svg") center / contain no-repeat;
+}
+
+/* Navbar /add: «Добавить» + counter + plus (иконка через маску — те же токены, что у btn-success) */
+.arc2-navbar-add-submit {
+  --btn-icon-size: 24px;
+}
+
+.arc2-navbar-add-submit .btn-ds__icon.arc2-navbar-add-submit-plus {
+  width: var(--btn-icon-size);
+  height: var(--btn-icon-size);
+  min-width: var(--btn-icon-size);
+}
+
+.arc2-navbar-add-submit-plus {
+  background-color: currentColor;
+  -webkit-mask: url("/ui/icons/plus_l.svg") center / contain no-repeat;
+  mask: url("/ui/icons/plus_l.svg") center / contain no-repeat;
 }
 
 .arc2-add-with-queue {
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
-}
-
-.arc2-add-queue-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-2);
-}
-
-.arc2-add-queue-summary {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s-2);
-}
-
-.arc2-add-queue-title {
-  margin: 0;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .arc2-add-queue-limit {
@@ -856,85 +923,180 @@ button.color-swatch-inline:disabled {
 
 .arc2-add-queue-scroll {
   display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-  padding: var(--s-3);
-  max-height: min(240px, 32vh);
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-
-.arc2-add-queue-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--s-2);
-  padding: var(--s-2);
-  border-radius: var(--radius-m);
-  border: 1px solid var(--surface-border-default);
-  background: var(--panel-bg);
-}
-
-.arc2-add-queue-row.is-active {
-  border-color: var(--input-border-focus);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--input-border-focus) 35%, transparent);
-}
-
-.arc2-add-queue-main {
-  flex: 1 1 auto;
-  display: flex;
   flex-direction: row;
   align-items: center;
   gap: var(--s-3);
-  min-width: 0;
+  padding: var(--s-3);
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 0 0 auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+  touch-action: none;
+}
+
+.arc2-add-queue-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.arc2-add-queue-scroll.is-dragging-queue {
+  cursor: grabbing;
+  user-select: none;
+}
+
+/* Превью очереди /add — Figma 129:13861 */
+.arc2-add-queue-tile {
+  position: relative;
+  width: 128px;
+  height: 128px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-m);
+}
+
+/* Рамка поверх картинки (inset shadow на контейнере уходит под img) */
+.arc2-add-queue-tile.is-active::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px var(--surface-border-raised);
+  transition: box-shadow var(--transition-fast);
+}
+
+.arc2-add-queue-tile-main {
+  width: 100%;
+  height: 100%;
   padding: 0;
   margin: 0;
   border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
+  border-radius: inherit;
+  overflow: hidden;
   cursor: pointer;
-  border-radius: var(--radius-s);
+  background: var(--gray-900);
+  display: block;
+  font: inherit;
+  color: inherit;
 }
 
-.arc2-add-queue-main:focus-visible {
+.arc2-add-queue-tile-main:focus-visible {
   outline: 2px solid var(--input-border-focus);
   outline-offset: 2px;
 }
 
-.arc2-add-queue-thumb {
-  flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-m);
-  background: var(--gray-800);
-  border: 1px solid var(--surface-border-default);
+.arc2-add-queue-tile-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
-.arc2-add-queue-textblock {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-1);
-  min-width: 0;
-}
-
-.arc2-add-queue-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.arc2-add-queue-tag-hint {
-  color: var(--text-elev-secondary);
-}
-
-.arc2-add-queue-tag-hint--warn {
-  color: var(--danger-500);
+.arc2-add-queue-tile-remove {
+  position: absolute;
+  top: var(--s-2);
+  left: var(--s-2);
+  right: auto;
+  z-index: 2;
+  pointer-events: auto;
 }
 
 .arc2-add-queue-remove-btn {
   flex-shrink: 0;
+}
+
+/* Крестик: маска из иконки S (гидрация SVG в очереди может не успеть; цвет — токены .btn-danger .btn-icon-only__glyph) */
+.arc2-add-queue-remove-btn .arc2-add-queue-remove-icon {
+  display: block;
+  background-color: currentColor;
+  -webkit-mask: url("/ui/icons/close_s.svg") center / contain no-repeat;
+  mask: url("/ui/icons/close_s.svg") center / contain no-repeat;
+}
+
+.arc2-add-queue-add-tile {
+  width: 128px;
+  height: 128px;
+  flex: 0 0 auto;
+  padding: 0;
+  margin: 0;
+  border-radius: var(--radius-m);
+  border-style: dashed;
+  border-width: 1px;
+  border-color: var(--surface-border-default);
+  background: var(--panel-bg);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  transition: border-color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.arc2-add-queue-add-tile:hover:not(:disabled) {
+  border-color: var(--input-border-focus);
+}
+
+.arc2-add-queue-add-tile:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.arc2-add-queue-add-tile:focus-visible {
+  outline: 2px solid var(--input-border-focus);
+  outline-offset: 2px;
+}
+
+.arc2-add-queue-add-tile-plus {
+  width: 24px;
+  height: 24px;
+  background-color: var(--text-elev-secondary);
+  -webkit-mask: url("/ui/icons/plus_l.svg") center / contain no-repeat;
+  mask: url("/ui/icons/plus_l.svg") center / contain no-repeat;
+}
+
+.arc2-add-queue-add-tile:hover:not(:disabled) .arc2-add-queue-add-tile-plus {
+  background-color: var(--text-elev-primary);
+}
+
+.arc2-add-workspace {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--s-3);
+  align-items: stretch;
+  align-content: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.arc2-add-preview.panel {
+  padding: 0;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.arc2-add-preview-image {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .arc2-add-editor {
@@ -942,15 +1104,30 @@ button.color-swatch-inline:disabled {
   flex-direction: column;
   gap: var(--s-3);
   padding: var(--s-3);
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
 }
 
+/* как EL-TABS-DEFAULT в arc-2-ui: .tabs { gap: 0 } */
 .arc2-add-tabs.tabs {
   flex-wrap: wrap;
-  gap: var(--s-1);
+  gap: 0;
+  flex-shrink: 0;
 }
 
-.arc2-add-tabs .tab-button {
-  gap: var(--s-1);
+/* Иначе .arc2-add-tab-body { display:flex } перебивает UA [hidden] и все три панели остаются в потоке — табы перестают переключать видимый раздел */
+.arc2-add-editor [role='tabpanel'][hidden] {
+  display: none !important;
+}
+
+.arc2-add-tab-panels {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .arc2-add-tab-dot {
@@ -965,7 +1142,14 @@ button.color-swatch-inline:disabled {
   display: flex;
   flex-direction: column;
   gap: var(--s-3);
-  min-height: min(360px, 42vh);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Фокус-кольцо инпута в тулбаре не режем — общий overflow у .arc2-add-tab-body оставляем для коллекций/описания */
+#arc2-add-panel-tags.arc2-add-tab-body {
+  overflow: visible;
 }
 
 .arc2-add-tab-body--description {
@@ -975,7 +1159,7 @@ button.color-swatch-inline:disabled {
 .arc2-add-toolbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: stretch;
+  align-items: center;
   gap: var(--s-2);
 }
 
@@ -984,13 +1168,123 @@ button.color-swatch-inline:disabled {
   min-width: 0;
 }
 
+.arc2-add-toolbar .arc2-add-tags-btn-group {
+  flex-shrink: 0;
+}
+
+/* Копировать: copy_l / Применить: file-plus_l — маска, цвет через токены btn-group (.btn-icon-only__glyph) */
+.arc2-add-tags-btn-group .arc2-add-copy-settings-icon,
+.arc2-add-tags-btn-group .arc2-add-apply-tags-icon {
+  display: block;
+  width: var(--btn-icon-size);
+  height: var(--btn-icon-size);
+  flex-shrink: 0;
+  background-color: currentColor;
+  color: inherit;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+}
+
+.arc2-add-tags-btn-group .arc2-add-copy-settings-icon {
+  -webkit-mask-image: url("/ui/icons/copy_l.svg");
+  mask-image: url("/ui/icons/copy_l.svg");
+}
+
+.arc2-add-tags-btn-group .arc2-add-apply-tags-icon {
+  -webkit-mask-image: url("/ui/icons/file-plus_l.svg");
+  mask-image: url("/ui/icons/file-plus_l.svg");
+}
+
+/* Внутренний .search-inner получает фокус — обводка как у .input:focus-visible и .input.search-field:focus-within */
+.input.search-live:focus-within {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px var(--focus-white);
+}
+
+.field-error .input.search-live:focus-within {
+  outline: none;
+  border-color: var(--input-border-error);
+  box-shadow: 0 0 0 3px var(--focus-danger);
+}
+
 .arc2-add-tags-scroll {
   display: flex;
   flex-direction: column;
   gap: var(--s-4);
   overflow-y: auto;
   padding-right: var(--s-1);
-  max-height: min(420px, 48vh);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Категория слева, чипы справа: колонка заголовков = ширина самой широкой подписи (CSS Grid); ряд — display:contents */
+.arc2-add-tags-categories {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: var(--s-3);
+  row-gap: var(--s-3);
+  align-items: start;
+}
+
+.arc2-add-tag-sep {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--gray-900);
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.arc2-add-tag-category-row {
+  display: contents;
+}
+
+.arc2-add-tag-category-title {
+  margin: 0;
+  padding-top: var(--s-3);
+  align-self: start;
+  justify-self: stretch;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--text-elev-primary);
+}
+
+/* Первая категория: заголовок не прямой потомок сетки (ряд с display:contents), только через .arc2-add-tag-category-row */
+.arc2-add-tags-categories > .arc2-add-tag-category-row:first-child .arc2-add-tag-category-title {
+  padding-top: 0;
+}
+
+.arc2-add-tag-chips-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-3);
+}
+
+.tags-row.arc2-add-tag-chips--with-add {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  align-content: flex-start;
+}
+
+/* Размер S: вложенный scope (см. arc-2-ui data-btn-size="s") */
+.arc2-add-tag-new-btn {
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.arc2-add-page .tags-row .chip:focus-visible {
+  outline: none;
+  box-shadow: var(--btn-focus-ring-white);
+  position: relative;
+  z-index: 1;
 }
 
 .arc2-add-tag-group-title {
@@ -1005,52 +1299,6 @@ button.color-swatch-inline:disabled {
   height: var(--s-2);
   border-radius: 50%;
   flex-shrink: 0;
-}
-
-.arc2-add-tag-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-}
-
-.arc2-add-tag-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-1);
-  min-height: 28px;
-  padding: 0 var(--s-2);
-  border-radius: var(--radius-s);
-  border: 1px solid transparent;
-  background: var(--gray-700);
-  color: var(--text-elev-primary);
-  font-size: var(--typo-p-s-size);
-  line-height: var(--typo-p-s-line);
-  cursor: pointer;
-  transition:
-    border-color var(--transition-fast),
-    background var(--transition-fast);
-}
-
-.arc2-add-tag-chip:focus-visible {
-  outline: 2px solid var(--input-border-focus);
-  outline-offset: 2px;
-}
-
-.arc2-add-tag-chip.is-selected {
-  border-color: var(--input-border-focus);
-  background: color-mix(in srgb, var(--gray-700) 85%, var(--gray-600));
-}
-
-.arc2-add-tag-chip-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.arc2-add-tag-chip-count {
-  color: var(--text-elev-secondary);
-  font-size: var(--typo-p-s-size);
 }
 
 .arc2-add-collection-chips {
@@ -1117,4 +1365,19 @@ button.color-swatch-inline:disabled {
 
 .arc2-add-busy {
   margin: 0;
+}
+
+@media (max-width: 1200px) {
+  .arc2-add-workspace {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+
+  .arc2-add-preview {
+    min-height: min(440px, 56vh);
+  }
+
+  .arc2-add-tab-body {
+    min-height: min(380px, 52vh);
+  }
 }
