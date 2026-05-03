@@ -15,6 +15,7 @@ import {
   type CardRecord,
   type TagRecord
 } from '../services/db';
+import { parseSearchCardId, parseSearchTagIds } from '../search/searchUrl';
 
 const PAGE_INITIAL = 50;
 const PAGE_MORE = 25;
@@ -27,6 +28,9 @@ function filterFromParams(raw: string | null): 'all' | 'images' | 'videos' {
 export default function GalleryPage() {
   const [searchParams] = useSearchParams();
   const filter = filterFromParams(searchParams.get('gf'));
+  const selectedTagIds = useMemo(() => parseSearchTagIds(searchParams), [searchParams]);
+  const cardIdExact = useMemo(() => parseSearchCardId(searchParams), [searchParams]);
+  const hasSearchFilters = selectedTagIds.length > 0 || Boolean(cardIdExact);
   const [ready, setReady] = useState(false);
   const [cards, setCards] = useState<CardRecord[]>([]);
   const [offset, setOffset] = useState(0);
@@ -61,7 +65,9 @@ export default function GalleryPage() {
         const chunk = await listCardsPage({
           offset: start,
           limit: take,
-          filter
+          filter,
+          selectedTagIds,
+          cardIdExact
         });
         setHasMore(chunk.length === take);
         setOffset(start + chunk.length);
@@ -70,7 +76,7 @@ export default function GalleryPage() {
         setLoading(false);
       }
     },
-    [filter]
+    [filter, selectedTagIds, cardIdExact]
   );
 
   useEffect(() => {
@@ -108,7 +114,7 @@ export default function GalleryPage() {
     setOffset(0);
     setHasMore(true);
     void loadPage(0, false);
-  }, [filter, ready, loadPage]);
+  }, [filter, selectedTagIds, cardIdExact, ready, loadPage]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -133,6 +139,13 @@ export default function GalleryPage() {
       );
     }
     if (cards.length === 0 && !loading) {
+      if (hasSearchFilters) {
+        return (
+          <div className="arc2-page-empty panel elevation-default">
+            <p className="typo-p-m">Карточки не найдены. Измените фильтры поиска или сбросьте метки.</p>
+          </div>
+        );
+      }
       return (
         <div className="arc2-page-empty panel elevation-default">
           <p className="typo-p-m">Карточек пока нет. Добавьте изображения через «Добавить карточки».</p>
@@ -140,7 +153,7 @@ export default function GalleryPage() {
       );
     }
     return null;
-  }, [ready, cards.length, loading]);
+  }, [ready, cards.length, loading, hasSearchFilters]);
 
   return (
     <div className="arc2-gallery-page">

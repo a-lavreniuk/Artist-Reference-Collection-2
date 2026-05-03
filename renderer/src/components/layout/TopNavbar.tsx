@@ -18,6 +18,7 @@ import {
 } from './navbarEvents';
 import { hydrateArc2NavbarIcons } from './navbarIconHydrate';
 import NewCategoryModal from './NewCategoryModal';
+import NavbarSearch, { formatNavbarTabCount } from './NavbarSearch';
 import {
   parseUiKitElevation,
   parseUiKitSize,
@@ -55,16 +56,6 @@ const DEFAULT_METRICS: NavbarMetrics = {
   totalCategories: 0
 };
 
-function formatTabCount(value: number): string {
-  if (value >= 1000) {
-    const k = value / 1000;
-    const rounded = Math.round(k * 10) / 10;
-    const text = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/\.0$/, '');
-    return `${text}K`;
-  }
-  return String(value);
-}
-
 export default function TopNavbar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,7 +63,6 @@ export default function TopNavbar() {
   const headerRef = useRef<HTMLElement>(null);
 
   const [metrics, setMetrics] = useState<NavbarMetrics>(DEFAULT_METRICS);
-  const [searchValue, setSearchValue] = useState('');
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
   const [collectionDetailTitle, setCollectionDetailTitle] = useState('');
   const [addQueueHasItems, setAddQueueHasItems] = useState(false);
@@ -258,7 +248,6 @@ export default function TopNavbar() {
     moodboardFilter,
     settingsFilter,
     searchParams,
-    searchValue,
     metrics,
     showAddCategoryModal,
     uiKitElev,
@@ -302,27 +291,7 @@ export default function TopNavbar() {
           </div>
 
           <div className="arc2-navbar-group arc2-navbar-group--grow">
-            <div
-              className={`field field-full search-multiselect-live arc2-navbar-search-live${searchValue ? ' has-value' : ''}`}
-              data-live-search-multi
-            >
-              <div className="input search-multiselect input--size-l input-slots arc2-navbar-search">
-                <span className="search-icon slot-leading arc2-icon-search" aria-hidden="true"></span>
-                <input
-                  className="search-inner slot-value"
-                  type="text"
-                  placeholder="Поиск по названиям меток или ID карточек..."
-                  value={searchValue}
-                  onChange={(event) => setSearchValue(event.target.value)}
-                />
-                <button
-                  className="input-inline-icon search-multiselect-clear-btn input-inline-icon--close slot-trailing arc2-icon-close"
-                  type="button"
-                  aria-label="Очистить"
-                  onClick={() => setSearchValue('')}
-                ></button>
-              </div>
-            </div>
+            <NavbarSearch />
           </div>
 
           <div className="arc2-navbar-group">
@@ -548,7 +517,9 @@ function FilterTabs({
           >
             <span className={`tab-icon ${item.iconClass}`} aria-hidden="true"></span>
             <span>{item.label}</span>
-            {typeof item.count === 'number' && <span className="tab-counter">{formatTabCount(item.count)}</span>}
+            {typeof item.count === 'number' && item.count > 0 ? (
+              <span className="tab-counter">{formatNavbarTabCount(item.count)}</span>
+            ) : null}
           </button>
         );
       })}

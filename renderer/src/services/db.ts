@@ -12,6 +12,14 @@ export type NavbarMetrics = {
 
 export type CategoryWeight = 'neutral' | 'low' | 'medium' | 'high';
 
+/** Числовой вклад метки в скоринг «похожих» (одно место для настройки). */
+export const CATEGORY_WEIGHT_SCORE: Record<CategoryWeight, number> = {
+  neutral: 1,
+  low: 2,
+  medium: 4,
+  high: 8
+};
+
 export type CategoryRecord = {
   id: string;
   name: string;
@@ -859,21 +867,51 @@ export async function listCardsSorted(filter: 'all' | 'images' | 'videos'): Prom
   return filtered.sort((a, b) => b.addedAt.localeCompare(a.addedAt));
 }
 
+function cardHasAllTagIds(c: CardRecord, selectedTagIds: string[]): boolean {
+  if (selectedTagIds.length === 0) return true;
+  for (const id of selectedTagIds) {
+    if (!c.tagIds.includes(id)) return false;
+  }
+  return true;
+}
+
 export async function listCardsPage(params: {
   offset: number;
   limit: number;
   filter: 'all' | 'images' | 'videos';
+  selectedTagIds?: string[];
+  cardIdExact?: string | null;
 }): Promise<CardRecord[]> {
   const sorted = await listCardsSorted(params.filter);
-  return sorted.slice(params.offset, params.offset + params.limit);
+  const tagIds = (params.selectedTagIds ?? []).filter((id) => id.trim().length > 0);
+  let list = sorted.filter((c) => cardHasAllTagIds(c, tagIds));
+  const cardExact = params.cardIdExact?.trim() ?? '';
+  if (cardExact) {
+    const one = list.find((c) => c.id === cardExact);
+    list = one ? [one] : [];
+  }
+  return list.slice(params.offset, params.offset + params.limit);
 }
 
 export async function listCardsInCollection(
   collectionId: string,
-  params: { offset: number; limit: number; filter: 'all' | 'images' | 'videos' }
+  params: {
+    offset: number;
+    limit: number;
+    filter: 'all' | 'images' | 'videos';
+    selectedTagIds?: string[];
+    cardIdExact?: string | null;
+  }
 ): Promise<CardRecord[]> {
   const sorted = (await listCardsSorted(params.filter)).filter((c) => c.collectionIds.includes(collectionId));
-  return sorted.slice(params.offset, params.offset + params.limit);
+  const tagIds = (params.selectedTagIds ?? []).filter((id) => id.trim().length > 0);
+  let list = sorted.filter((c) => cardHasAllTagIds(c, tagIds));
+  const cardExact = params.cardIdExact?.trim() ?? '';
+  if (cardExact) {
+    const one = list.find((c) => c.id === cardExact);
+    list = one ? [one] : [];
+  }
+  return list.slice(params.offset, params.offset + params.limit);
 }
 
 export async function getCardById(id: string): Promise<CardRecord | null> {
@@ -893,8 +931,21 @@ export async function getCollectionCardCounts(): Promise<Record<string, number>>
   return m;
 }
 
+async function buildTagIdToWeightScore(): Promise<Map<string, number>> {
+  const cats = await getAllCategories();
+  const map = new Map<string, number>();
+  for (const cat of cats) {
+    const w = CATEGORY_WEIGHT_SCORE[cat.weight];
+    const tags = await getTagsByCategory(cat.id);
+    for (const t of tags) {
+      map.set(t.id, w);
+    }
+  }
+  return map;
+}
+
 /**
- * Карточки с пересечением меток (как в Notion — до `limit`), без текущей.
+ * Похожие карточки: сумма весов совпавших меток (вес категории), tie-break по дате добавления.
  */
 export async function listSimilarCards(cardId: string, limit = 15): Promise<CardRecord[]> {
   const base = await getCardById(cardId);
@@ -902,13 +953,18 @@ export async function listSimilarCards(cardId: string, limit = 15): Promise<Card
   const tagSet = new Set(base.tagIds);
   if (tagSet.size === 0) return [];
 
+  const weightByTag = await buildTagIdToWeightScore();
+  const neutral = CATEGORY_WEIGHT_SCORE.neutral;
+
   const all = await listCardsSorted('all');
   const scored = all
     .filter((c) => c.id !== cardId && c.type === 'image')
     .map((c) => {
       let score = 0;
       for (const t of c.tagIds) {
-        if (tagSet.has(t)) score++;
+        if (tagSet.has(t)) {
+          score += weightByTag.get(t) ?? neutral;
+        }
       }
       return { c, score };
     })

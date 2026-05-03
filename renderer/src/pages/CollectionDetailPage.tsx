@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { parseSearchCardId, parseSearchTagIds } from '../search/searchUrl';
 import GalleryBoard from '../components/gallery/GalleryBoard';
 import CardInspectModal from '../components/gallery/CardInspectModal';
 import ConfirmCollectionDeleteModal from '../components/layout/ConfirmCollectionDeleteModal';
@@ -32,6 +33,9 @@ export default function CollectionDetailPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const filter = filterFromParams(searchParams.get('gf'));
+  const selectedTagIds = useMemo(() => parseSearchTagIds(searchParams), [searchParams]);
+  const cardIdExact = useMemo(() => parseSearchCardId(searchParams), [searchParams]);
+  const hasSearchFilters = selectedTagIds.length > 0 || Boolean(cardIdExact);
 
   const [collectionName, setCollectionName] = useState('');
   const [cards, setCards] = useState<CardRecord[]>([]);
@@ -72,7 +76,9 @@ export default function CollectionDetailPage() {
         const chunk = await listCardsInCollection(collectionId, {
           offset: start,
           limit: take,
-          filter
+          filter,
+          selectedTagIds,
+          cardIdExact
         });
         setHasMore(chunk.length === take);
         setOffset(start + chunk.length);
@@ -81,7 +87,7 @@ export default function CollectionDetailPage() {
         setLoading(false);
       }
     },
-    [collectionId, filter]
+    [collectionId, filter, selectedTagIds, cardIdExact]
   );
 
   useEffect(() => {
@@ -98,7 +104,7 @@ export default function CollectionDetailPage() {
     setOffset(0);
     setHasMore(true);
     void loadPage(0, false);
-  }, [collectionId, filter, loadPage]);
+  }, [collectionId, filter, selectedTagIds, cardIdExact, loadPage]);
 
   useEffect(() => {
     const onCards = () => {
@@ -151,7 +157,11 @@ export default function CollectionDetailPage() {
 
       {cards.length === 0 && !loading ? (
         <div className="arc2-page-empty panel elevation-default">
-          <p className="typo-p-m">В коллекции пока нет карточек.</p>
+          <p className="typo-p-m">
+            {hasSearchFilters
+              ? 'Карточки не найдены. Измените фильтры поиска или сбросьте метки.'
+              : 'В коллекции пока нет карточек.'}
+          </p>
         </div>
       ) : (
         <>
