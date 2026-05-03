@@ -2,12 +2,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { hydrateArc2NavbarIcons } from './navbarIconHydrate';
 
 type Props = {
-  tagName: string;
   onClose: () => void;
   onConfirm: () => Promise<void>;
 };
 
-export default function ConfirmDeleteTagModal({ tagName, onClose, onConfirm }: Props) {
+export default function ConfirmCollectionDeleteModal({ onClose, onConfirm }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -33,7 +32,7 @@ export default function ConfirmDeleteTagModal({ tagName, onClose, onConfirm }: P
     try {
       await onConfirm();
       onClose();
-    } catch {
+    } finally {
       setBusy(false);
     }
   };
@@ -56,12 +55,12 @@ export default function ConfirmDeleteTagModal({ tagName, onClose, onConfirm }: P
         data-btn-size="s"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="arc2DeleteTagTitle"
+        aria-labelledby="arc2DeleteCollectionTitle"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="arc-modal__header arc-modal__header--title">
-          <h3 className="arc-modal__title" id="arc2DeleteTagTitle">
-            Удалить метку?
+          <h3 className="arc-modal__title" id="arc2DeleteCollectionTitle">
+            Удалить коллекцию?
           </h3>
           <button type="button" className="arc-modal__close" aria-label="Закрыть" onClick={onClose}>
             <span className="tab-icon arc2-icon-close" aria-hidden="true" />
@@ -69,9 +68,7 @@ export default function ConfirmDeleteTagModal({ tagName, onClose, onConfirm }: P
         </header>
         <div className="arc-modal__body">
           <div className="arc-modal__slot">
-            <p className="arc-modal__slot-text">
-              Метка «{tagName}» будет удалена. Это действие нельзя отменить.
-            </p>
+            <p className="arc-modal__slot-text">Карточки останутся в галерее.</p>
           </div>
         </div>
         <footer className="arc-modal__footer arc-modal__footer--actions-3">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useNavigate } from 'react-router-dom';
 import { hydrateArc2NavbarIcons } from '../components/layout/navbarIconHydrate';
 import { ARC2_ADD_CARDS_SUBMIT_REQUEST, publishAddCardsQueueState } from '../components/layout/navbarEvents';
+import { Tooltip } from '../components/tooltip/Tooltip';
 import TagChipToggleWithTooltip from '../components/tags/TagChipToggleWithTooltip';
 import TagSettingsModal, { type TagSettingsModalState } from '../components/tags/TagSettingsModal';
 import {
@@ -617,15 +618,16 @@ export default function AddCardsPage() {
               );
             })}
             {queue.length < MAX_QUEUE ? (
-              <button
-                type="button"
-                className="arc2-add-queue-add-tile"
-                onClick={() => void pickFiles()}
-                aria-label={`Добавить файлы в очередь (${queue.length} из ${MAX_QUEUE})`}
-                title={`${queue.length} / ${MAX_QUEUE}`}
-              >
-                <span className="arc2-add-queue-add-tile-plus" aria-hidden="true" />
-              </button>
+              <Tooltip content={`${queue.length} / ${MAX_QUEUE}`} position="top">
+                <button
+                  type="button"
+                  className="arc2-add-queue-add-tile"
+                  onClick={() => void pickFiles()}
+                  aria-label={`Добавить файлы в очередь (${queue.length} из ${MAX_QUEUE})`}
+                >
+                  <span className="arc2-add-queue-add-tile-plus" aria-hidden="true" />
+                </button>
+              </Tooltip>
             ) : null}
           </div>
 
@@ -670,7 +672,9 @@ export default function AddCardsPage() {
                       <span>{label}</span>
                       {key === 'description' ? (
                         count > 0 ? (
-                          <span className="arc2-add-tab-dot" title="Есть текст" aria-hidden="true" />
+                          <Tooltip content="Есть текст" position="top">
+                            <span className="arc2-add-tab-dot" aria-hidden="true" />
+                          </Tooltip>
                         ) : null
                       ) : count > 0 ? (
                         <span className="tab-counter">{count}</span>
@@ -701,20 +705,33 @@ export default function AddCardsPage() {
                         </div>
                       </div>
                       <div className="btn-group btn-group-ds arc2-add-tags-btn-group">
-                        <button
-                          type="button"
-                          className="btn btn-outline btn-ds btn-icon-only"
-                          onClick={copyTags}
-                          disabled={!canCopyActiveCardSettings}
-                          aria-label="Скопировать настройки"
-                          title={
-                            canCopyActiveCardSettings
-                              ? undefined
-                              : 'Сначала выберите метку, опишите карточку или укажите коллекцию'
-                          }
-                        >
-                          <span className="btn-icon-only__glyph arc2-add-copy-settings-icon" aria-hidden="true" />
-                        </button>
+                        {canCopyActiveCardSettings ? (
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-ds btn-icon-only"
+                            onClick={copyTags}
+                            aria-label="Скопировать настройки"
+                          >
+                            <span className="btn-icon-only__glyph arc2-add-copy-settings-icon" aria-hidden="true" />
+                          </button>
+                        ) : (
+                          <Tooltip
+                            content="Сначала выберите метку, опишите карточку или укажите коллекцию"
+                            position="top"
+                          >
+                            <span className="arc2-tooltip-anchor-inline">
+                              <button
+                                type="button"
+                                className="btn btn-outline btn-ds btn-icon-only"
+                                onClick={copyTags}
+                                disabled
+                                aria-label="Скопировать настройки"
+                              >
+                                <span className="btn-icon-only__glyph arc2-add-copy-settings-icon" aria-hidden="true" />
+                              </button>
+                            </span>
+                          </Tooltip>
+                        )}
                         <button
                           type="button"
                           className="btn btn-outline btn-ds btn-icon-only"
@@ -754,15 +771,16 @@ export default function AddCardsPage() {
                                     data-typo-tone="white"
                                     data-btn-size="s"
                                   >
-                                    <button
-                                      type="button"
-                                      className="btn btn-outline btn-ds btn-icon-only arc2-add-tag-new-btn"
-                                      onClick={() => setTagModal({ mode: 'create', categoryId: cat.id })}
-                                      aria-label={`Добавить метку в категорию «${cat.name}»`}
-                                      title="Новая метка"
-                                    >
-                                      <span className="btn-icon-only__glyph arc2-icon-plus" aria-hidden="true" />
-                                    </button>
+                                    <Tooltip content="Новая метка" position="top">
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline btn-ds btn-icon-only arc2-add-tag-new-btn"
+                                        onClick={() => setTagModal({ mode: 'create', categoryId: cat.id })}
+                                        aria-label={`Добавить метку в категорию «${cat.name}»`}
+                                      >
+                                        <span className="btn-icon-only__glyph arc2-icon-plus" aria-hidden="true" />
+                                      </button>
+                                    </Tooltip>
                                   </div>
                                 </div>
                               </div>

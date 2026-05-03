@@ -1,14 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { hydrateArc2NavbarIcons } from '../layout/navbarIconHydrate';
+import { hydrateArc2NavbarIcons } from './navbarIconHydrate';
 
 type Props = {
+  initialName: string;
   onClose: () => void;
   onSubmit: (name: string) => Promise<void>;
 };
 
-export default function NewCollectionModal({ onClose, onSubmit }: Props) {
+export default function RenameCollectionModal({ initialName, onClose, onSubmit }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [name, setName] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [name, setName] = useState(initialName);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,6 +19,11 @@ export default function NewCollectionModal({ onClose, onSubmit }: Props) {
       void hydrateArc2NavbarIcons(hostRef.current);
     }
   }, [name, error, busy]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => inputRef.current?.focus(), 0);
+    return () => window.clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -36,7 +43,7 @@ export default function NewCollectionModal({ onClose, onSubmit }: Props) {
       await onSubmit(name.trim());
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось создать коллекцию');
+      setError(err instanceof Error ? err.message : 'Ошибка переименования');
     } finally {
       setBusy(false);
     }
@@ -60,12 +67,12 @@ export default function NewCollectionModal({ onClose, onSubmit }: Props) {
         data-btn-size="s"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="arc2NewCollectionTitle"
+        aria-labelledby="arc2RenameCollectionTitle"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="arc-modal__header arc-modal__header--title">
-          <h3 className="arc-modal__title" id="arc2NewCollectionTitle">
-            Новая коллекция
+          <h3 className="arc-modal__title" id="arc2RenameCollectionTitle">
+            Переименовать коллекцию
           </h3>
           <button type="button" className="arc-modal__close" aria-label="Закрыть" onClick={onClose}>
             <span className="tab-icon arc2-icon-close" aria-hidden="true" />
@@ -73,17 +80,21 @@ export default function NewCollectionModal({ onClose, onSubmit }: Props) {
         </header>
         <div className="arc-modal__body">
           <div className={`field field-full input-live${error ? ' input-live--error' : ''}`}>
-            <label className="field-label" htmlFor="arc2NewCollectionName">
-              Название
+            <label className="field-label" htmlFor="arc2RenameCollectionName">
+              Новое название
             </label>
             <div className="input input--size-s">
               <input
-                id="arc2NewCollectionName"
+                ref={inputRef}
+                id="arc2RenameCollectionName"
                 className="input-native"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 aria-invalid={Boolean(error)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleSubmit();
+                }}
               />
             </div>
             {error ? (
@@ -98,7 +109,7 @@ export default function NewCollectionModal({ onClose, onSubmit }: Props) {
             <span className="btn-ds__value">Отмена</span>
           </button>
           <button type="button" className="btn btn-primary btn-ds" onClick={() => void handleSubmit()} disabled={busy}>
-            <span className="btn-ds__value">{busy ? 'Сохранение…' : 'Создать'}</span>
+            <span className="btn-ds__value">{busy ? 'Сохранение…' : 'Сохранить'}</span>
           </button>
         </footer>
       </section>

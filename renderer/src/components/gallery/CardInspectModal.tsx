@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { hydrateArc2NavbarIcons } from '../layout/navbarIconHydrate';
+import MessageModal from '../layout/MessageModal';
+import { Tooltip } from '../tooltip/Tooltip';
 import type { CardRecord, CategoryRecord, TagRecord } from '../../services/db';
 import {
   getMoodboardCardIds,
@@ -89,6 +91,7 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copyAlertVisible, setCopyAlertVisible] = useState(false);
+  const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
   const copyAlertTimerRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
@@ -149,13 +152,14 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (confirmDelete) setConfirmDelete(false);
+        if (exportErrorMessage) setExportErrorMessage(null);
+        else if (confirmDelete) setConfirmDelete(false);
         else onClose();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, confirmDelete]);
+  }, [onClose, confirmDelete, exportErrorMessage]);
 
   const tagsResolved =
     card?.tagIds
@@ -237,7 +241,7 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
     if (!card?.originalRelativePath || !window.arc) return;
     const res = await window.arc.saveMediaToFolder(card.originalRelativePath);
     if (!res.ok && !res.canceled) {
-      window.alert(res.error || 'Не удалось выгрузить файл');
+      setExportErrorMessage(res.error || 'Не удалось выгрузить файл');
     }
   };
 
@@ -322,66 +326,72 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
 
           <div className="arc2-card-inspect-toolbar-right">
             <div className="arc2-card-inspect-segmented" role="group" aria-label="Действия с карточкой">
-              <button
-                type="button"
-                className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn"
-                title={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
-                aria-label={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
-                onMouseEnter={() => setIsBookmarkHovered(true)}
-                onMouseLeave={() => setIsBookmarkHovered(false)}
-                onFocus={() => setIsBookmarkHovered(true)}
-                onBlur={() => setIsBookmarkHovered(false)}
-                onClick={async () => {
-                  if (!card) return;
-                  const next = await toggleCardInMoodboard(card.id);
-                  setInMoodboard(next);
-                }}
-                disabled={!card}
-              >
-                <span className={`btn-icon-only__glyph ${bookmarkIconClass}`} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn"
-                onClick={() => void saveMedia()}
-                disabled={!card?.originalRelativePath || !window.arc}
-                title="Выгрузить изображение"
-                aria-label="Выгрузить изображение"
-              >
-                <span className="btn-icon-only__glyph arc2-icon-download" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn"
-                onClick={() => void openInFolder()}
-                disabled={!card?.originalRelativePath || !window.arc}
-                title="Показать файл в папке"
-                aria-label="Открыть папку с файлом"
-              >
-                <span className="btn-icon-only__glyph arc2-icon-folder-open" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn arc2-card-inspect-segmented-btn--last"
-                onClick={() => void editCard()}
-                disabled={!card}
-                title="Редактировать карточку"
-                aria-label="Редактировать карточку"
-              >
-                <span className="btn-icon-only__glyph arc2-icon-edit" aria-hidden="true" />
-              </button>
+              <Tooltip content={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'} position="top">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn"
+                  aria-label={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
+                  onMouseEnter={() => setIsBookmarkHovered(true)}
+                  onMouseLeave={() => setIsBookmarkHovered(false)}
+                  onFocus={() => setIsBookmarkHovered(true)}
+                  onBlur={() => setIsBookmarkHovered(false)}
+                  onClick={async () => {
+                    if (!card) return;
+                    const next = await toggleCardInMoodboard(card.id);
+                    setInMoodboard(next);
+                  }}
+                  disabled={!card}
+                >
+                  <span className={`btn-icon-only__glyph ${bookmarkIconClass}`} aria-hidden="true" />
+                </button>
+              </Tooltip>
+              <Tooltip content="Выгрузить изображение" position="top">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn"
+                  onClick={() => void saveMedia()}
+                  disabled={!card?.originalRelativePath || !window.arc}
+                  aria-label="Выгрузить изображение"
+                >
+                  <span className="btn-icon-only__glyph arc2-icon-download" aria-hidden="true" />
+                </button>
+              </Tooltip>
+              <Tooltip content="Показать файл в папке" position="top">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn"
+                  onClick={() => void openInFolder()}
+                  disabled={!card?.originalRelativePath || !window.arc}
+                  aria-label="Открыть папку с файлом"
+                >
+                  <span className="btn-icon-only__glyph arc2-icon-folder-open" aria-hidden="true" />
+                </button>
+              </Tooltip>
+              <Tooltip content="Редактировать карточку" position="top">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn arc2-card-inspect-segmented-btn--last"
+                  onClick={() => void editCard()}
+                  disabled={!card}
+                  aria-label="Редактировать карточку"
+                >
+                  <span className="btn-icon-only__glyph arc2-icon-edit" aria-hidden="true" />
+                </button>
+              </Tooltip>
             </div>
 
-            <button
-              type="button"
-              className="btn btn-outline btn-ds arc2-card-inspect-id-pill"
-              onClick={() => void copyId()}
-              disabled={!card}
-              title="Скопировать ID"
-            >
-              <span className="arc2-card-inspect-id-text">{card?.id ?? ''}</span>
-              <span className="btn-ds__icon arc2-icon-copy" aria-hidden="true" />
-            </button>
+            <Tooltip content="Скопировать ID" position="top">
+              <button
+                type="button"
+                className="btn btn-outline btn-ds arc2-card-inspect-id-pill"
+                onClick={() => void copyId()}
+                disabled={!card}
+                aria-label="Скопировать ID"
+              >
+                <span className="arc2-card-inspect-id-text">{card?.id ?? ''}</span>
+                <span className="btn-ds__icon arc2-icon-copy" aria-hidden="true" />
+              </button>
+            </Tooltip>
           </div>
         </header>
 
@@ -513,18 +523,20 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
                 <p className="arc-modal__slot-text">Файл будет удалён из библиотеки. Это действие нельзя отменить.</p>
               </div>
             </div>
-            <footer className="arc-modal__footer arc-modal__footer--actions-2">
-              <button
-                type="button"
-                className="btn btn-outline btn-ds btn-s"
-                onClick={() => setConfirmDelete(false)}
-                disabled={busy}
-              >
-                <span className="btn-ds__value">Отмена</span>
-              </button>
+            <footer className="arc-modal__footer arc-modal__footer--actions-3">
               <button type="button" className="btn btn-danger btn-ds btn-s" onClick={() => void handleDelete()} disabled={busy}>
                 <span className="btn-ds__value">{busy ? 'Удаление…' : 'Удалить'}</span>
               </button>
+              <div className="arc-modal__footer-right">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-ds btn-s"
+                  onClick={() => setConfirmDelete(false)}
+                  disabled={busy}
+                >
+                  <span className="btn-ds__value">Отмена</span>
+                </button>
+              </div>
             </footer>
           </section>
         </div>
@@ -547,6 +559,15 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
             </button>
           </div>
         </div>
+      ) : null}
+
+      {exportErrorMessage ? (
+        <MessageModal
+          hostClassName="arc-modal-host--nested"
+          title="Не удалось выгрузить файл"
+          message={exportErrorMessage}
+          onClose={() => setExportErrorMessage(null)}
+        />
       ) : null}
     </div>
   );

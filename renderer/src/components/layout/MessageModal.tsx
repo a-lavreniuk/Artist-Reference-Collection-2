@@ -1,21 +1,30 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { hydrateArc2NavbarIcons } from './navbarIconHydrate';
 
 type Props = {
-  tagName: string;
+  title?: string;
+  message: string;
   onClose: () => void;
-  onConfirm: () => Promise<void>;
+  /** Подпись основной кнопки */
+  closeLabel?: string;
+  /** Дополнительные классы для корня (например вложенная модалка поверх другой) */
+  hostClassName?: string;
 };
 
-export default function ConfirmDeleteTagModal({ tagName, onClose, onConfirm }: Props) {
+export default function MessageModal({
+  title = 'Сообщение',
+  message,
+  onClose,
+  closeLabel = 'Понятно',
+  hostClassName = ''
+}: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const [busy, setBusy] = useState(false);
 
   useLayoutEffect(() => {
     if (hostRef.current) {
       void hydrateArc2NavbarIcons(hostRef.current);
     }
-  }, [busy]);
+  }, [message, title]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -27,21 +36,10 @@ export default function ConfirmDeleteTagModal({ tagName, onClose, onConfirm }: P
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
-  const handleConfirm = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await onConfirm();
-      onClose();
-    } catch {
-      setBusy(false);
-    }
-  };
-
   return (
     <div
       ref={hostRef}
-      className="arc-modal-host"
+      className={`arc-modal-host${hostClassName ? ` ${hostClassName}` : ''}`}
       aria-hidden="false"
       onClick={(event) => {
         if (event.target === event.currentTarget) {
@@ -56,12 +54,12 @@ export default function ConfirmDeleteTagModal({ tagName, onClose, onConfirm }: P
         data-btn-size="s"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="arc2DeleteTagTitle"
+        aria-labelledby="arc2MessageModalTitle"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="arc-modal__header arc-modal__header--title">
-          <h3 className="arc-modal__title" id="arc2DeleteTagTitle">
-            Удалить метку?
+          <h3 className="arc-modal__title" id="arc2MessageModalTitle">
+            {title}
           </h3>
           <button type="button" className="arc-modal__close" aria-label="Закрыть" onClick={onClose}>
             <span className="tab-icon arc2-icon-close" aria-hidden="true" />
@@ -69,25 +67,13 @@ export default function ConfirmDeleteTagModal({ tagName, onClose, onConfirm }: P
         </header>
         <div className="arc-modal__body">
           <div className="arc-modal__slot">
-            <p className="arc-modal__slot-text">
-              Метка «{tagName}» будет удалена. Это действие нельзя отменить.
-            </p>
+            <p className="arc-modal__slot-text">{message}</p>
           </div>
         </div>
-        <footer className="arc-modal__footer arc-modal__footer--actions-3">
-          <button
-            type="button"
-            className="btn btn-danger btn-ds btn-s"
-            disabled={busy}
-            onClick={() => void handleConfirm()}
-          >
-            <span className="btn-ds__value">{busy ? 'Удаление…' : 'Удалить'}</span>
+        <footer className="arc-modal__footer arc-modal__footer--actions-1">
+          <button type="button" className="btn btn-primary btn-ds btn-s" onClick={onClose}>
+            <span className="btn-ds__value">{closeLabel}</span>
           </button>
-          <div className="arc-modal__footer-right">
-            <button type="button" className="btn btn-outline btn-ds btn-s" disabled={busy} onClick={onClose}>
-              <span className="btn-ds__value">Отмена</span>
-            </button>
-          </div>
         </footer>
       </section>
     </div>

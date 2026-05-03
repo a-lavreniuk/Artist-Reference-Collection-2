@@ -74,10 +74,7 @@ export default function ConfirmDeleteCategoryModal({ categoryName, onClose, onCo
             </p>
           </div>
         </div>
-        <footer className="arc-modal__footer arc-modal__footer--actions-2">
-          <button type="button" className="btn btn-outline btn-ds btn-s" disabled={busy} onClick={onClose}>
-            <span className="btn-ds__value">Отмена</span>
-          </button>
+        <footer className="arc-modal__footer arc-modal__footer--actions-3">
           <button
             type="button"
             className="btn btn-danger btn-ds btn-s"
@@ -86,6 +83,11 @@ export default function ConfirmDeleteCategoryModal({ categoryName, onClose, onCo
           >
             <span className="btn-ds__value">{busy ? 'Удаление…' : 'Удалить'}</span>
           </button>
+          <div className="arc-modal__footer-right">
+            <button type="button" className="btn btn-outline btn-ds btn-s" disabled={busy} onClick={onClose}>
+              <span className="btn-ds__value">Отмена</span>
+            </button>
+          </div>
         </footer>
       </section>
     </div>

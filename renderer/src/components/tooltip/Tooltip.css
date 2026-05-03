@@ -89,3 +89,9 @@
     opacity: 1;
   }
 }
+
+/* Обёртка над disabled-кнопкой: нативный title не срабатывает; тултип ловит hover на span */
+.arc2-tooltip-anchor-inline {
+  display: inline-flex;
+  vertical-align: middle;
+}

@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import GalleryBoard from '../components/gallery/GalleryBoard';
 import CardInspectModal from '../components/gallery/CardInspectModal';
+import ConfirmCollectionDeleteModal from '../components/layout/ConfirmCollectionDeleteModal';
+import MessageModal from '../components/layout/MessageModal';
+import RenameCollectionModal from '../components/layout/RenameCollectionModal';
 import { ARC2_NAVBAR_COLLECTION_TITLE_EVENT } from '../components/layout/navbarEvents';
 import {
   ARC2_CARDS_CHANGED_EVENT,
@@ -37,6 +40,9 @@ export default function CollectionDetailPage() {
   const [loading, setLoading] = useState(false);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [tagsIndex, setTagsIndex] = useState<Map<string, TagRecord>>(new Map());
+  const [renameModalOpen, setRenameModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [infoModalMessage, setInfoModalMessage] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const loadTagsIndex = useCallback(async () => {
@@ -119,21 +125,8 @@ export default function CollectionDetailPage() {
 
   const title = useMemo(() => collectionName || 'Коллекция', [collectionName]);
 
-  const rename = async () => {
+  const removeCollection = async () => {
     if (!collectionId) return;
-    const next = window.prompt('Новое название коллекции', collectionName);
-    if (!next || !next.trim()) return;
-    try {
-      await renameCollection(collectionId, next.trim());
-      await loadMeta();
-    } catch (e) {
-      window.alert(e instanceof Error ? e.message : 'Ошибка переименования');
-    }
-  };
-
-  const remove = async () => {
-    if (!collectionId) return;
-    if (!window.confirm('Удалить коллекцию? Карточки останутся в галерее.')) return;
     await deleteCollection(collectionId);
     navigate('/collections');
   };
@@ -147,10 +140,10 @@ export default function CollectionDetailPage() {
       <div className="arc2-collection-toolbar panel elevation-default">
         <h2 className="h2 arc2-collection-toolbar-title">{title}</h2>
         <div className="arc2-collection-toolbar-actions">
-          <button type="button" className="btn btn-outline btn-ds" onClick={() => void rename()}>
+          <button type="button" className="btn btn-outline btn-ds" onClick={() => setRenameModalOpen(true)}>
             <span className="btn-ds__value">Переименовать</span>
           </button>
-          <button type="button" className="btn btn-outline btn-ds" onClick={() => void remove()}>
+          <button type="button" className="btn btn-outline btn-ds" onClick={() => setDeleteModalOpen(true)}>
             <span className="btn-ds__value">Удалить коллекцию</span>
           </button>
         </div>
@@ -168,7 +161,7 @@ export default function CollectionDetailPage() {
             onFindSimilar={async (id) => {
               const sim = await listSimilarCards(id, 1);
               if (sim.length === 0) {
-                window.alert('Нет карточек с общими метками');
+                setInfoModalMessage('Нет карточек с общими метками');
                 return;
               }
               setOpenCardId(sim[0].id);
@@ -187,6 +180,25 @@ export default function CollectionDetailPage() {
           onDeleted={() => void loadPage(0, false)}
           onOpenCard={(cid) => setOpenCardId(cid)}
         />
+      ) : null}
+
+      {renameModalOpen && collectionId ? (
+        <RenameCollectionModal
+          initialName={collectionName}
+          onClose={() => setRenameModalOpen(false)}
+          onSubmit={async (next) => {
+            await renameCollection(collectionId, next);
+            await loadMeta();
+          }}
+        />
+      ) : null}
+
+      {deleteModalOpen ? (
+        <ConfirmCollectionDeleteModal onClose={() => setDeleteModalOpen(false)} onConfirm={removeCollection} />
+      ) : null}
+
+      {infoModalMessage ? (
+        <MessageModal message={infoModalMessage} onClose={() => setInfoModalMessage(null)} />
       ) : null}
     </div>
   );

@@ -1,16 +1,24 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CardRecord } from '../../services/db';
 import { hydrateArc2NavbarIcons } from '../layout/navbarIconHydrate';
+import { Tooltip } from '../tooltip/Tooltip';
 
 type Props = {
   cards: CardRecord[];
   onOpenCard: (id: string) => void;
   onFindSimilar?: (cardId: string) => void;
-  moodboardCardIds: Set<string>;
-  onToggleMoodboard: (cardId: string) => void | Promise<void>;
+  /** Без этого набора кнопка мудборда на карточке не показывается */
+  moodboardCardIds?: Set<string>;
+  onToggleMoodboard?: (cardId: string) => void | Promise<void>;
 };
 
-export default function GalleryBoard({ cards, onOpenCard, onFindSimilar, moodboardCardIds, onToggleMoodboard }: Props) {
+export default function GalleryBoard({
+  cards,
+  onOpenCard,
+  onFindSimilar,
+  moodboardCardIds,
+  onToggleMoodboard
+}: Props) {
   const [srcMap, setSrcMap] = useState<Record<string, string>>({});
   const [hoveredBookmarkCardId, setHoveredBookmarkCardId] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -42,10 +50,12 @@ export default function GalleryBoard({ cards, onOpenCard, onFindSimilar, moodboa
     }
   }, [cards, hoveredBookmarkCardId, moodboardCardIds]);
 
+  const moodboardEnabled = Boolean(moodboardCardIds && onToggleMoodboard);
+
   return (
     <div ref={rootRef} className="arc2-gallery-masonry">
       {cards.map((card) => {
-        const inMoodboard = moodboardCardIds.has(card.id);
+        const inMoodboard = moodboardCardIds?.has(card.id) ?? false;
         const iconClass =
           hoveredBookmarkCardId === card.id
             ? inMoodboard
@@ -92,23 +102,29 @@ export default function GalleryBoard({ cards, onOpenCard, onFindSimilar, moodboa
                     <span className="btn-ds__value">Найти похожее</span>
                   </button>
                 ) : null}
-                <button
-                  type="button"
-                  className="btn btn-outline btn-icon-only btn-ds arc2-gallery-overlay-bookmark arc2-card-slot-blur-btn"
-                  title={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
-                  aria-label={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
-                  onMouseEnter={() => setHoveredBookmarkCardId(card.id)}
-                  onMouseLeave={() => setHoveredBookmarkCardId((prev) => (prev === card.id ? null : prev))}
-                  onFocus={() => setHoveredBookmarkCardId(card.id)}
-                  onBlur={() => setHoveredBookmarkCardId((prev) => (prev === card.id ? null : prev))}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    void onToggleMoodboard(card.id);
-                  }}
-                >
-                  <span className={`btn-icon-only__glyph ${iconClass}`} aria-hidden="true" />
-                </button>
+                {moodboardEnabled ? (
+                  <Tooltip
+                    content={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
+                    position="top"
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-icon-only btn-ds arc2-gallery-overlay-bookmark arc2-card-slot-blur-btn"
+                      aria-label={inMoodboard ? 'Убрать из мудборда' : 'Добавить в мудборд'}
+                      onMouseEnter={() => setHoveredBookmarkCardId(card.id)}
+                      onMouseLeave={() => setHoveredBookmarkCardId((prev) => (prev === card.id ? null : prev))}
+                      onFocus={() => setHoveredBookmarkCardId(card.id)}
+                      onBlur={() => setHoveredBookmarkCardId((prev) => (prev === card.id ? null : prev))}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void onToggleMoodboard!(card.id);
+                      }}
+                    >
+                      <span className={`btn-icon-only__glyph ${iconClass}`} aria-hidden="true" />
+                    </button>
+                  </Tooltip>
+                ) : null}
               </span>
             </span>
           </span>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useNavigate, useParams } from 'react-router-dom';
 import { ARC2_EDIT_CARD_SUBMIT_REQUEST } from '../components/layout/navbarEvents';
 import { hydrateArc2NavbarIcons } from '../components/layout/navbarIconHydrate';
+import { Tooltip } from '../components/tooltip/Tooltip';
 import TagChipToggleWithTooltip from '../components/tags/TagChipToggleWithTooltip';
 import {
   getAllCategories,
@@ -185,7 +186,9 @@ export default function GalleryCardEditStubPage() {
               <span>{label}</span>
               {key === 'description' ? (
                 count > 0 ? (
-                  <span className="arc2-add-tab-dot" title="Есть текст" aria-hidden="true" />
+                  <Tooltip content="Есть текст" position="top">
+                    <span className="arc2-add-tab-dot" aria-hidden="true" />
+                  </Tooltip>
                 ) : null
               ) : count > 0 ? (
                 <span className="tab-counter">{count}</span>

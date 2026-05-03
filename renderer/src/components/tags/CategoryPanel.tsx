@@ -353,7 +353,6 @@ export default function CategoryPanel({
                     type="button"
                     className={`chip${draggingTagId === tag.id ? ' arc2-tag-chip--dragging' : ''}`}
                     draggable={!busy}
-                    title={!canShowTooltip ? titleHint : undefined}
                     aria-label={`Редактировать метку «${tag.name}»`}
                     aria-grabbed={draggingTagId === tag.id}
                     onClick={() => {
@@ -392,6 +391,10 @@ export default function CategoryPanel({
                         position="top"
                         variant="rich"
                       >
+                        {chip}
+                      </Tooltip>
+                    ) : !canShowTooltip ? (
+                      <Tooltip content={titleHint} delay={500} position="top">
                         {chip}
                       </Tooltip>
                     ) : (

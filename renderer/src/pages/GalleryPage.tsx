@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import GalleryBoard from '../components/gallery/GalleryBoard';
 import CardInspectModal from '../components/gallery/CardInspectModal';
+import MessageModal from '../components/layout/MessageModal';
 import {
   ARC2_CARDS_CHANGED_EVENT,
   getAllCategories,
@@ -35,6 +36,7 @@ export default function GalleryPage() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [tagsIndex, setTagsIndex] = useState<Map<string, TagRecord>>(new Map());
   const [moodboardCardIds, setMoodboardCardIds] = useState<Set<string>>(new Set());
+  const [infoModalMessage, setInfoModalMessage] = useState<string | null>(null);
 
   const loadMoodboard = useCallback(async () => {
     const ids = await getMoodboardCardIds();
@@ -161,7 +163,7 @@ export default function GalleryPage() {
             onFindSimilar={async (id) => {
               const sim = await listSimilarCards(id, 1);
               if (sim.length === 0) {
-                window.alert('Нет карточек с общими метками');
+                setInfoModalMessage('Нет карточек с общими метками');
                 return;
               }
               setOpenCardId(sim[0].id);
@@ -180,6 +182,10 @@ export default function GalleryPage() {
           onDeleted={() => void loadPage(0, false)}
           onOpenCard={(cid) => setOpenCardId(cid)}
         />
+      ) : null}
+
+      {infoModalMessage ? (
+        <MessageModal message={infoModalMessage} onClose={() => setInfoModalMessage(null)} />
       ) : null}
     </div>
   );
