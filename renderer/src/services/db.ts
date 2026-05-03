@@ -742,6 +742,17 @@ export async function deleteCollection(collectionId: string): Promise<void> {
   } else {
     const cols = (await getAllCollections()).filter((c) => c.id !== collectionId);
     safeWriteArray(STORAGE_KEYS.collections, cols);
+    const localCards = safeReadArray<unknown>(STORAGE_KEYS.cards)
+      .map(normalizeCardRecord)
+      .filter((c): c is CardRecord => c !== null);
+    if (localCards.length > 0) {
+      const next = localCards.map((c) =>
+        c.collectionIds.some((id) => id === collectionId)
+          ? { ...c, collectionIds: c.collectionIds.filter((id) => id !== collectionId) }
+          : c
+      );
+      safeWriteArray(STORAGE_KEYS.cards, next);
+    }
   }
   notifyCollectionsChanged();
   notifyCardsChanged();
@@ -929,6 +940,25 @@ export async function getCollectionCardCounts(): Promise<Record<string, number>>
     }
   }
   return m;
+}
+
+/** До `limitPerCollection` карточек на коллекцию для превью на разводящей (порядок как в галерее). */
+export async function getCollectionPreviewSlices(limitPerCollection = 3): Promise<Record<string, CardRecord[]>> {
+  const all = await listCardsSorted('all');
+  const cols = await getAllCollections();
+  const out: Record<string, CardRecord[]> = {};
+  for (const col of cols) {
+    out[col.id] = [];
+  }
+  for (const card of all) {
+    for (const colId of card.collectionIds) {
+      const bucket = out[colId];
+      if (bucket && bucket.length < limitPerCollection) {
+        bucket.push(card);
+      }
+    }
+  }
+  return out;
 }
 
 /** Карта метка → вес категории (один проход по категориям). */

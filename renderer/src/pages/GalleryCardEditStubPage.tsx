@@ -5,6 +5,9 @@ import { hydrateArc2NavbarIcons } from '../components/layout/navbarIconHydrate';
 import { Tooltip } from '../components/tooltip/Tooltip';
 import TagChipToggleWithTooltip from '../components/tags/TagChipToggleWithTooltip';
 import {
+  ARC2_CATEGORIES_CHANGED_EVENT,
+  ARC2_COLLECTIONS_CHANGED_EVENT,
+  ARC2_TAGS_CHANGED_EVENT,
   getAllCategories,
   getAllCollections,
   getCardById,
@@ -76,6 +79,18 @@ export default function GalleryCardEditStubPage() {
       setLoaded(true);
     })();
   }, [params.cardId, reloadCatalog]);
+
+  useEffect(() => {
+    const onCatalog = () => void reloadCatalog();
+    window.addEventListener(ARC2_CATEGORIES_CHANGED_EVENT, onCatalog);
+    window.addEventListener(ARC2_TAGS_CHANGED_EVENT, onCatalog);
+    window.addEventListener(ARC2_COLLECTIONS_CHANGED_EVENT, onCatalog);
+    return () => {
+      window.removeEventListener(ARC2_CATEGORIES_CHANGED_EVENT, onCatalog);
+      window.removeEventListener(ARC2_TAGS_CHANGED_EVENT, onCatalog);
+      window.removeEventListener(ARC2_COLLECTIONS_CHANGED_EVENT, onCatalog);
+    };
+  }, [reloadCatalog]);
 
   const handleSubmit = useCallback(async () => {
     if (!params.cardId || busy || !loaded) return;

@@ -14,7 +14,8 @@ import {
   getLastAddCardsQueueState,
   ARC2_EDIT_CARD_SUBMIT_REQUEST,
   ARC2_COLLECTIONS_ADD_REQUEST,
-  ARC2_NAVBAR_COLLECTION_TITLE_EVENT
+  ARC2_NAVBAR_COLLECTION_TITLE_EVENT,
+  ARC2_RENAME_COLLECTION_REQUEST
 } from './navbarEvents';
 import { hydrateArc2NavbarIcons } from './navbarIconHydrate';
 import NewCategoryModal from './NewCategoryModal';
@@ -148,9 +149,11 @@ export default function TopNavbar() {
   }, [location.pathname]);
 
   const activeMainTab: MainSectionKey =
-    activeView === 'collectionDetail' || activeView === 'editCardDetail' || activeView === 'add'
-      ? 'gallery'
-      : activeView;
+    activeView === 'collectionDetail'
+      ? 'collections'
+      : activeView === 'editCardDetail' || activeView === 'add'
+        ? 'gallery'
+        : activeView;
 
   useEffect(() => {
     void refreshMetrics();
@@ -252,7 +255,8 @@ export default function TopNavbar() {
     metrics,
     showAddCategoryModal,
     uiKitElev,
-    uiKitSize
+    uiKitSize,
+    collectionDetailTitle
   ]);
 
   const requestCollectionsAdd = () => {
@@ -269,7 +273,12 @@ export default function TopNavbar() {
 
   return (
     <>
-      <header ref={headerRef} className="arc2-navbar panel elevation-default" data-navbar-elevation="default">
+      <header
+        ref={headerRef}
+        className="arc2-navbar panel elevation-default"
+        data-elevation="default"
+        data-navbar-elevation="default"
+      >
         <div className="arc2-navbar-row">
           <div className="arc2-navbar-group">
             <div className="tabs arc2-navbar-main-tabs" role="tablist" aria-label="Основная навигация">
@@ -307,8 +316,41 @@ export default function TopNavbar() {
           </div>
         </div>
 
-        <div className="arc2-navbar-row">
-          {activeView !== 'editCardDetail' ? <h1 className="h1 arc2-navbar-title">{title}</h1> : null}
+        <div
+          className={
+            activeView === 'collectionDetail'
+              ? 'arc2-navbar-row arc2-navbar-row--collection-detail'
+              : 'arc2-navbar-row'
+          }
+        >
+          {activeView === 'collectionDetail' ? (
+            <>
+              <button
+                type="button"
+                className="btn btn-outline btn-ds btn-icon-only"
+                aria-label="Назад к списку коллекций"
+                onClick={() => navigate('/collections')}
+              >
+                <span className="btn-icon-only__glyph arc2-icon-undo" aria-hidden="true" />
+              </button>
+              <div className="arc2-navbar-collection-heading">
+                <h1 className="h1 arc2-navbar-title arc2-navbar-title--collection">{title}</h1>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-ds btn-icon-only arc2-navbar-collection-rename"
+                  aria-label="Изменить название коллекции"
+                  onClick={() => window.dispatchEvent(new CustomEvent(ARC2_RENAME_COLLECTION_REQUEST))}
+                >
+                  <span className="btn-icon-only__glyph arc2-icon-edit" aria-hidden="true" />
+                </button>
+              </div>
+            </>
+          ) : activeView !== 'editCardDetail' ? (
+            <h1 className="h1 arc2-navbar-title">{title}</h1>
+          ) : null}
+          {activeView === 'collectionDetail' ? (
+            <div className="arc2-navbar-collection-row-spacer" aria-hidden="true" />
+          ) : null}
           <div className="arc2-navbar-secondary-actions">
             {activeView === 'uiKit' && (
               <UiKitNavbarToolbar
@@ -373,19 +415,6 @@ export default function TopNavbar() {
             )}
             {activeView === 'collectionDetail' && (
               <div className="arc2-navbar-collection-detail">
-                <div className="arc2-navbar-collection-detail-left">
-                  <button
-                    className="btn btn-outline btn-icon-only"
-                    type="button"
-                    aria-label="Назад"
-                    onClick={() => navigate('/collections')}
-                  >
-                    <span
-                      className="btn-icon-only__glyph arc2-icon-chevron arc2-chevron-point-left"
-                      aria-hidden="true"
-                    ></span>
-                  </button>
-                </div>
                 <FilterTabs
                   ariaLabel="Фильтрация карточек коллекции"
                   items={galleryTabs}
@@ -547,7 +576,7 @@ function getTitle(activeView: ActiveView, collectionTitle: string): string {
     case 'add':
       return 'Добавить карточки';
     case 'collectionDetail':
-      return collectionTitle ? `Коллекция: «${collectionTitle}»` : 'Коллекция';
+      return collectionTitle ? collectionTitle : 'Коллекция';
     case 'editCardDetail':
       return 'Изменить карточку';
     default:

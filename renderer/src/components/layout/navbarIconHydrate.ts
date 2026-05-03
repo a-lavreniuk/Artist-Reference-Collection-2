@@ -29,7 +29,8 @@ type IconKey =
   | 'folderOpen'
   | 'edit'
   | 'tag'
-  | 'server';
+  | 'server'
+  | 'undo';
 
 const ICON_FILES: Record<IconKey, string> = {
   search: 'search_m.svg',
@@ -56,7 +57,8 @@ const ICON_FILES: Record<IconKey, string> = {
   folderOpen: 'folder-open_m.svg',
   edit: 'edit_m.svg',
   tag: 'tag_m.svg',
-  server: 'server_m.svg'
+  server: 'server_m.svg',
+  undo: 'undo_m.svg'
 };
 const SIZE_SUFFIX_RE = /_(s|m|l|xl)\.svg$/;
 type UiSize = 's' | 'm' | 'l' | 'xl';
@@ -86,11 +88,12 @@ const ICON_CLASS_TO_KEY: Record<string, IconKey> = {
   arc2_icon_folder_open: 'folderOpen',
   arc2_icon_edit: 'edit',
   arc2_icon_tag: 'tag',
-  arc2_icon_server: 'server'
+  arc2_icon_server: 'server',
+  arc2_icon_undo: 'undo'
 };
 
 const ICON_SELECTOR =
-  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-arrow-up-right, .arc2-icon-trash, .arc2-icon-bookmark, .arc2-icon-bookmark-plus, .arc2-icon-bookmark-minus, .arc2-icon-download, .arc2-icon-folder-open, .arc2-icon-edit, .arc2-icon-tag, .arc2-icon-server';
+  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-arrow-up-right, .arc2-icon-trash, .arc2-icon-bookmark, .arc2-icon-bookmark-plus, .arc2-icon-bookmark-minus, .arc2-icon-download, .arc2-icon-folder-open, .arc2-icon-edit, .arc2-icon-tag, .arc2-icon-server, .arc2-icon-undo';
 
 const svgMarkupCache = new Map<string, string>();
 let preloadPromise: Promise<void> | null = null;
@@ -101,6 +104,11 @@ function uniquifySvgIds(svgText: string): string {
   return svgText
     .replace(/\bid="([^"]+)"/g, (_, id: string) => `id="${id}-${sfx}"`)
     .replace(/url\(#([^)]+)\)/g, (_, ref: string) => `url(#${ref}-${sfx})`);
+}
+
+function isLikelySvgMarkup(raw: string): boolean {
+  const t = raw.replace(/^\uFEFF/, '').replace(/<\?xml[^?]*\?>/gi, '').trimStart();
+  return /^<svg\b/i.test(t);
 }
 
 function normalizeSvgForTokens(svgText: string): string {
@@ -148,12 +156,17 @@ function resolveIconFile(iconKey: IconKey, scope?: HTMLElement): { preferred: st
 
 async function ensureSvgMarkup(file: string): Promise<string | null> {
   const cached = svgMarkupCache.get(file);
-  if (cached) return cached;
+  if (cached) {
+    if (isLikelySvgMarkup(cached)) return cached;
+    svgMarkupCache.delete(file);
+  }
   try {
     const res = await fetch(iconUrl(file));
     if (!res.ok) return null;
     const raw = (await res.text()).trim();
+    if (!isLikelySvgMarkup(raw)) return null;
     const normalized = normalizeSvgForTokens(raw);
+    if (!isLikelySvgMarkup(normalized)) return null;
     svgMarkupCache.set(file, normalized);
     return normalized;
   } catch {
@@ -181,7 +194,11 @@ function classToIconKey(element: HTMLElement): IconKey | null {
 function injectSvgMarkup(host: HTMLElement, normalizedMarkup: string, file: string): void {
   host.innerHTML = uniquifySvgIds(normalizedMarkup);
   const svg = host.querySelector('svg');
-  if (!svg) return;
+  if (!svg) {
+    host.innerHTML = '';
+    delete host.dataset.arc2IconFile;
+    return;
+  }
   svg.classList.add('arc-navbar-icon-svg');
   svg.setAttribute('aria-hidden', 'true');
   svg.removeAttribute('width');

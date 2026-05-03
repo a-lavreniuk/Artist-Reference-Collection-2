@@ -6,16 +6,22 @@ import CardInspectModal from '../components/gallery/CardInspectModal';
 import ConfirmCollectionDeleteModal from '../components/layout/ConfirmCollectionDeleteModal';
 import DemoAlert from '../components/layout/DemoAlert';
 import RenameCollectionModal from '../components/layout/RenameCollectionModal';
-import { ARC2_NAVBAR_COLLECTION_TITLE_EVENT } from '../components/layout/navbarEvents';
+import {
+  ARC2_NAVBAR_COLLECTION_TITLE_EVENT,
+  ARC2_RENAME_COLLECTION_REQUEST
+} from '../components/layout/navbarEvents';
 import {
   ARC2_CARDS_CHANGED_EVENT,
   deleteCollection,
   getAllCategories,
+  getAllCollections,
   getCollectionById,
+  getMoodboardCardIds,
   getTagsByCategory,
   listCardsInCollection,
   listSimilarCards,
   renameCollection,
+  toggleCardInMoodboard,
   type CardRecord,
   type TagRecord
 } from '../services/db';
@@ -38,6 +44,7 @@ export default function CollectionDetailPage() {
   const hasSearchFilters = selectedTagIds.length > 0 || Boolean(cardIdExact);
 
   const [collectionName, setCollectionName] = useState('');
+  const [otherCollectionsLowerNames, setOtherCollectionsLowerNames] = useState<Set<string>>(() => new Set());
   const [cards, setCards] = useState<CardRecord[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -47,7 +54,13 @@ export default function CollectionDetailPage() {
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [noSimilarAlertOpen, setNoSimilarAlertOpen] = useState(false);
+  const [moodboardCardIds, setMoodboardCardIds] = useState<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadMoodboard = useCallback(async () => {
+    const ids = await getMoodboardCardIds();
+    setMoodboardCardIds(new Set(ids));
+  }, []);
 
   const loadTagsIndex = useCallback(async () => {
     const cats = await getAllCategories();
@@ -59,13 +72,27 @@ export default function CollectionDetailPage() {
     setTagsIndex(m);
   }, []);
 
+  const refreshOtherCollectionNames = useCallback(async () => {
+    const allCols = await getAllCollections();
+    const id = collectionId ?? '';
+    setOtherCollectionsLowerNames(
+      new Set(
+        allCols
+          .filter((c) => c.id !== id)
+          .map((c) => c.name.trim().toLowerCase())
+          .filter(Boolean)
+      )
+    );
+  }, [collectionId]);
+
   const loadMeta = useCallback(async () => {
     if (!collectionId) return;
     const c = await getCollectionById(collectionId);
-    const title = c?.name ?? '';
-    setCollectionName(title);
-    window.dispatchEvent(new CustomEvent(ARC2_NAVBAR_COLLECTION_TITLE_EVENT, { detail: { title } }));
-  }, [collectionId]);
+    const nextTitle = c?.name ?? '';
+    setCollectionName(nextTitle);
+    window.dispatchEvent(new CustomEvent(ARC2_NAVBAR_COLLECTION_TITLE_EVENT, { detail: { title: nextTitle } }));
+    await refreshOtherCollectionNames();
+  }, [collectionId, refreshOtherCollectionNames]);
 
   const loadPage = useCallback(
     async (start: number, append: boolean) => {
@@ -93,10 +120,11 @@ export default function CollectionDetailPage() {
   useEffect(() => {
     void loadTagsIndex();
     void loadMeta();
+    void loadMoodboard();
     return () => {
       window.dispatchEvent(new CustomEvent(ARC2_NAVBAR_COLLECTION_TITLE_EVENT, { detail: { title: '' } }));
     };
-  }, [loadMeta, loadTagsIndex]);
+  }, [loadMeta, loadTagsIndex, loadMoodboard]);
 
   useEffect(() => {
     if (!collectionId) return;
@@ -107,13 +135,24 @@ export default function CollectionDetailPage() {
   }, [collectionId, filter, selectedTagIds, cardIdExact, loadPage]);
 
   useEffect(() => {
+    const onRenameRequest = () => setRenameModalOpen(true);
+    window.addEventListener(ARC2_RENAME_COLLECTION_REQUEST, onRenameRequest);
+    return () => window.removeEventListener(ARC2_RENAME_COLLECTION_REQUEST, onRenameRequest);
+  }, []);
+
+  useEffect(() => {
     const onCards = () => {
       void loadPage(0, false);
       void loadTagsIndex();
+      void loadMoodboard();
     };
     window.addEventListener(ARC2_CARDS_CHANGED_EVENT, onCards);
-    return () => window.removeEventListener(ARC2_CARDS_CHANGED_EVENT, onCards);
-  }, [loadPage, loadTagsIndex]);
+    window.addEventListener('arc2:library-changed', onCards);
+    return () => {
+      window.removeEventListener(ARC2_CARDS_CHANGED_EVENT, onCards);
+      window.removeEventListener('arc2:library-changed', onCards);
+    };
+  }, [loadPage, loadTagsIndex, loadMoodboard]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -129,8 +168,6 @@ export default function CollectionDetailPage() {
     return () => io.disconnect();
   }, [collectionId, hasMore, loading, offset, loadPage]);
 
-  const title = useMemo(() => collectionName || 'Коллекция', [collectionName]);
-
   const removeCollection = async () => {
     if (!collectionId) return;
     await deleteCollection(collectionId);
@@ -143,18 +180,6 @@ export default function CollectionDetailPage() {
 
   return (
     <div className="arc2-collection-detail">
-      <div className="arc2-collection-toolbar panel elevation-default">
-        <h2 className="h2 arc2-collection-toolbar-title">{title}</h2>
-        <div className="arc2-collection-toolbar-actions">
-          <button type="button" className="btn btn-outline btn-ds" onClick={() => setRenameModalOpen(true)}>
-            <span className="btn-ds__value">Переименовать</span>
-          </button>
-          <button type="button" className="btn btn-outline btn-ds" onClick={() => setDeleteModalOpen(true)}>
-            <span className="btn-ds__value">Удалить коллекцию</span>
-          </button>
-        </div>
-      </div>
-
       {cards.length === 0 && !loading ? (
         <div className="arc2-page-empty panel elevation-default">
           <p className="typo-p-m">
@@ -168,6 +193,16 @@ export default function CollectionDetailPage() {
           <GalleryBoard
             cards={cards}
             onOpenCard={(id) => setOpenCardId(id)}
+            moodboardCardIds={moodboardCardIds}
+            onToggleMoodboard={async (id) => {
+              const next = await toggleCardInMoodboard(id);
+              setMoodboardCardIds((prev) => {
+                const copy = new Set(prev);
+                if (next) copy.add(id);
+                else copy.delete(id);
+                return copy;
+              });
+            }}
             onFindSimilar={async (id) => {
               const sim = await listSimilarCards(id, 1);
               if (sim.length === 0) {
@@ -194,11 +229,17 @@ export default function CollectionDetailPage() {
 
       {renameModalOpen && collectionId ? (
         <RenameCollectionModal
+          key={collectionId}
           initialName={collectionName}
+          otherCollectionsLowerNames={otherCollectionsLowerNames}
           onClose={() => setRenameModalOpen(false)}
           onSubmit={async (next) => {
             await renameCollection(collectionId, next);
             await loadMeta();
+          }}
+          onRequestDelete={() => {
+            setRenameModalOpen(false);
+            setDeleteModalOpen(true);
           }}
         />
       ) : null}

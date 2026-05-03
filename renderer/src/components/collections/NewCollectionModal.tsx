@@ -2,21 +2,28 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { hydrateArc2NavbarIcons } from '../layout/navbarIconHydrate';
 
 type Props = {
+  existingLowerNames: Set<string>;
   onClose: () => void;
   onSubmit: (name: string) => Promise<void>;
 };
 
-export default function NewCollectionModal({ onClose, onSubmit }: Props) {
+export default function NewCollectionModal({ existingLowerNames, onClose, onSubmit }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const lastNonEmptyRef = useRef('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [emptySubmitted, setEmptySubmitted] = useState(false);
+  const [serverDuplicate, setServerDuplicate] = useState(false);
+
+  const trimmed = name.trim();
+  const liveDuplicate = Boolean(trimmed) && existingLowerNames.has(trimmed.toLowerCase());
+  const hasDuplicateNameError = liveDuplicate || serverDuplicate;
 
   useLayoutEffect(() => {
     if (hostRef.current) {
       void hydrateArc2NavbarIcons(hostRef.current);
     }
-  }, [name, error, busy]);
+  }, [name, busy, emptySubmitted, serverDuplicate]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -28,15 +35,24 @@ export default function NewCollectionModal({ onClose, onSubmit }: Props) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose]);
 
+  const fieldDanger = (!trimmed && emptySubmitted) || hasDuplicateNameError;
+
   const handleSubmit = async () => {
-    if (!name.trim() || busy) return;
+    if (busy) return;
+    setServerDuplicate(false);
+    if (!trimmed) {
+      setEmptySubmitted(true);
+      return;
+    }
     setBusy(true);
-    setError(null);
     try {
-      await onSubmit(name.trim());
+      await onSubmit(trimmed);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось создать коллекцию');
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('уже есть')) {
+        setServerDuplicate(true);
+      }
     } finally {
       setBusy(false);
     }
@@ -72,33 +88,67 @@ export default function NewCollectionModal({ onClose, onSubmit }: Props) {
           </button>
         </header>
         <div className="arc-modal__body">
-          <div className={`field field-full input-live${error ? ' input-live--error' : ''}`}>
-            <label className="field-label" htmlFor="arc2NewCollectionName">
-              Название
-            </label>
-            <div className="input input--size-s">
+          <div className="arc-modal__slot">
+            <p className="arc-modal__slot-text">
+              Введите название для новой коллекции. Оно будет отображаться при добавлении и редактировании карточек.
+            </p>
+          </div>
+          <div className="arc-modal__slot">
+            <label
+              className={`field input-live${trimmed ? ' has-value' : ''}${fieldDanger ? ' field-error' : ''}`}
+              data-live-input
+            >
               <input
-                id="arc2NewCollectionName"
-                className="input-native"
-                type="text"
+                className="input"
+                placeholder="Название коллекции"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                aria-invalid={Boolean(error)}
+                aria-invalid={fieldDanger}
+                autoFocus
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  setName(nextValue);
+                  if (nextValue.trim()) {
+                    lastNonEmptyRef.current = nextValue.trim();
+                  }
+                  if (emptySubmitted) setEmptySubmitted(false);
+                  if (serverDuplicate) setServerDuplicate(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleSubmit();
+                    return;
+                  }
+                  if (e.key === 'Escape' && !trimmed && lastNonEmptyRef.current) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setName(lastNonEmptyRef.current);
+                    setEmptySubmitted(false);
+                    setServerDuplicate(false);
+                  }
+                }}
               />
-            </div>
-            {error ? (
-              <p className="hint input-inline-error" role="alert">
-                {error}
-              </p>
-            ) : null}
+              <button
+                className="input-inline-icon input-inline-icon-floating input-clear-btn input-inline-icon--close arc2-icon-close"
+                type="button"
+                aria-label="Очистить"
+                onClick={(ev) => {
+                  ev.preventDefault();
+                  ev.stopPropagation();
+                  setName('');
+                  setEmptySubmitted(false);
+                  setServerDuplicate(false);
+                }}
+              />
+            </label>
           </div>
         </div>
         <footer className="arc-modal__footer arc-modal__footer--actions-2">
-          <button type="button" className="btn btn-outline btn-ds" onClick={onClose} disabled={busy}>
+          <button type="button" className="btn btn-outline btn-ds btn-s" onClick={onClose} disabled={busy}>
             <span className="btn-ds__value">Отмена</span>
           </button>
-          <button type="button" className="btn btn-primary btn-ds" onClick={() => void handleSubmit()} disabled={busy}>
-            <span className="btn-ds__value">{busy ? 'Сохранение…' : 'Создать'}</span>
+          <button type="button" className="btn btn-primary btn-ds btn-s" onClick={() => void handleSubmit()} disabled={busy}>
+            <span className="btn-ds__value">{busy ? 'Добавление…' : 'Добавить'}</span>
           </button>
         </footer>
       </section>
