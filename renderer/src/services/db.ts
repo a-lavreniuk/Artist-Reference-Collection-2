@@ -931,48 +931,83 @@ export async function getCollectionCardCounts(): Promise<Record<string, number>>
   return m;
 }
 
-async function buildTagIdToWeightScore(): Promise<Map<string, number>> {
+/** Карта метка → вес категории (один проход по категориям). */
+async function buildTagIdToCategoryWeight(): Promise<Map<string, CategoryWeight>> {
   const cats = await getAllCategories();
-  const map = new Map<string, number>();
+  const map = new Map<string, CategoryWeight>();
   for (const cat of cats) {
-    const w = CATEGORY_WEIGHT_SCORE[cat.weight];
     const tags = await getTagsByCategory(cat.id);
     for (const t of tags) {
-      map.set(t.id, w);
+      map.set(t.id, cat.weight);
     }
   }
   return map;
 }
 
+function scoreOverlapLex(
+  baseTagIds: string[],
+  candTagIds: string[],
+  categoryWeightByTag: Map<string, CategoryWeight>
+): { scoreHigh: number; scoreMedium: number; scoreLow: number } | null {
+  const candSet = new Set(candTagIds);
+  let scoreHigh = 0;
+  let scoreMedium = 0;
+  let scoreLow = 0;
+  let passesGate = false;
+
+  for (const tid of baseTagIds) {
+    if (!candSet.has(tid)) continue;
+    const w = categoryWeightByTag.get(tid);
+    if (w === undefined || w === 'neutral') continue;
+    const s = CATEGORY_WEIGHT_SCORE[w];
+    if (w === 'high' || w === 'medium') passesGate = true;
+    if (w === 'high') scoreHigh += s;
+    else if (w === 'medium') scoreMedium += s;
+    else if (w === 'low') scoreLow += s;
+  }
+
+  if (!passesGate) return null;
+  return { scoreHigh, scoreMedium, scoreLow };
+}
+
 /**
- * Похожие карточки: сумма весов совпавших меток (вес категории), tie-break по дате добавления.
+ * Похожие изображения: метки из категорий с весом «Нулевой» не участвуют.
+ * Кандидат допускается только при общей метке уровня «Высокий» или «Средний».
+ * Ранжирование: лексикографически по суммам (высокий → средний → низкий), tie-break по дате добавления.
  */
 export async function listSimilarCards(cardId: string, limit = 15): Promise<CardRecord[]> {
   const base = await getCardById(cardId);
   if (!base) return [];
-  const tagSet = new Set(base.tagIds);
-  if (tagSet.size === 0) return [];
 
-  const weightByTag = await buildTagIdToWeightScore();
-  const neutral = CATEGORY_WEIGHT_SCORE.neutral;
+  const categoryWeightByTag = await buildTagIdToCategoryWeight();
+
+  const baseHasGateTier = base.tagIds.some((tid) => {
+    const w = categoryWeightByTag.get(tid);
+    return w === 'high' || w === 'medium';
+  });
+  if (!baseHasGateTier) return [];
 
   const all = await listCardsSorted('all');
-  const scored = all
-    .filter((c) => c.id !== cardId && c.type === 'image')
-    .map((c) => {
-      let score = 0;
-      for (const t of c.tagIds) {
-        if (tagSet.has(t)) {
-          score += weightByTag.get(t) ?? neutral;
-        }
-      }
-      return { c, score };
-    })
-    .filter((x) => x.score > 0)
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return b.c.addedAt.localeCompare(a.c.addedAt);
-    });
+  const scored: Array<{
+    c: CardRecord;
+    scoreHigh: number;
+    scoreMedium: number;
+    scoreLow: number;
+  }> = [];
+
+  for (const c of all) {
+    if (c.id === cardId || c.type !== 'image') continue;
+    const lex = scoreOverlapLex(base.tagIds, c.tagIds, categoryWeightByTag);
+    if (!lex) continue;
+    scored.push({ c, ...lex });
+  }
+
+  scored.sort((a, b) => {
+    if (b.scoreHigh !== a.scoreHigh) return b.scoreHigh - a.scoreHigh;
+    if (b.scoreMedium !== a.scoreMedium) return b.scoreMedium - a.scoreMedium;
+    if (b.scoreLow !== a.scoreLow) return b.scoreLow - a.scoreLow;
+    return b.c.addedAt.localeCompare(a.c.addedAt);
+  });
 
   return scored.slice(0, limit).map((x) => x.c);
 }

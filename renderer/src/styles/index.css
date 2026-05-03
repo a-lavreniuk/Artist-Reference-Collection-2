@@ -577,23 +577,36 @@ button.color-swatch-inline:disabled {
   margin-left: auto;
 }
 
+/* Как .btn-group: gap: 0 + margin-left: -1px у *соседних сегментов*; у нас между кнопками — .arc2-tooltip-wrapper */
 .arc2-card-inspect-segmented {
   display: inline-flex;
   align-items: stretch;
+  gap: 0;
+  isolation: isolate;
 }
 
+.arc2-card-inspect-segmented > .arc2-tooltip-wrapper + .arc2-tooltip-wrapper {
+  margin-left: -1px;
+}
+
+/* Кнопки внутри Tooltip: обёртка — не .btn; радиусы — по первой/последней обёртке */
 .arc2-card-inspect-segmented-btn {
-  margin-right: -1px;
+  position: relative;
   border-radius: 0;
 }
 
-.arc2-card-inspect-segmented-btn:first-child {
-  border-radius: var(--radius-m) 0 0 var(--radius-m);
+.arc2-card-inspect-segmented-btn:focus-visible:not(:disabled) {
+  z-index: 3;
 }
 
-.arc2-card-inspect-segmented-btn.arc2-card-inspect-segmented-btn--last {
-  margin-right: 0;
-  border-radius: 0 var(--radius-m) var(--radius-m) 0;
+.arc2-card-inspect-segmented > :first-child .arc2-card-inspect-segmented-btn {
+  border-top-left-radius: var(--btn-radius);
+  border-bottom-left-radius: var(--btn-radius);
+}
+
+.arc2-card-inspect-segmented > :last-child .arc2-card-inspect-segmented-btn {
+  border-top-right-radius: var(--btn-radius);
+  border-bottom-right-radius: var(--btn-radius);
 }
 
 .arc2-card-inspect-id-pill {
@@ -1403,4 +1416,72 @@ button.color-swatch-inline:disabled {
   .arc2-add-tab-body {
     min-height: min(380px, 52vh);
   }
+}
+
+/* Онбординг: первый экран приложения (sunken-скоуп) */
+.arc2-onboarding {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-4);
+}
+
+.arc2-onboarding-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-3);
+}
+
+.arc2-onboarding-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+}
+
+.arc2-onboarding-title {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.arc2-onboarding-description {
+  max-width: 616px;
+  color: var(--text-elev-secondary);
+}
+
+.arc2-onboarding-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.arc2-onboarding-feature {
+  width: 300px;
+  height: 300px;
+  padding: var(--s-3);
+  border-radius: var(--radius-m);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.arc2-onboarding-feature__icon {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  color: var(--icons-white-default);
+}
+
+.arc2-onboarding-feature__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.arc2-onboarding-feature__description {
+  color: var(--text-elev-secondary);
 }

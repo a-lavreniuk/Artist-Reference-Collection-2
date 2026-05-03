@@ -4,7 +4,7 @@ import { parseSearchCardId, parseSearchTagIds } from '../search/searchUrl';
 import GalleryBoard from '../components/gallery/GalleryBoard';
 import CardInspectModal from '../components/gallery/CardInspectModal';
 import ConfirmCollectionDeleteModal from '../components/layout/ConfirmCollectionDeleteModal';
-import MessageModal from '../components/layout/MessageModal';
+import DemoAlert from '../components/layout/DemoAlert';
 import RenameCollectionModal from '../components/layout/RenameCollectionModal';
 import { ARC2_NAVBAR_COLLECTION_TITLE_EVENT } from '../components/layout/navbarEvents';
 import {
@@ -46,7 +46,7 @@ export default function CollectionDetailPage() {
   const [tagsIndex, setTagsIndex] = useState<Map<string, TagRecord>>(new Map());
   const [renameModalOpen, setRenameModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [infoModalMessage, setInfoModalMessage] = useState<string | null>(null);
+  const [noSimilarAlertOpen, setNoSimilarAlertOpen] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const loadTagsIndex = useCallback(async () => {
@@ -171,7 +171,7 @@ export default function CollectionDetailPage() {
             onFindSimilar={async (id) => {
               const sim = await listSimilarCards(id, 1);
               if (sim.length === 0) {
-                setInfoModalMessage('Нет карточек с общими метками');
+                setNoSimilarAlertOpen(true);
                 return;
               }
               setOpenCardId(sim[0].id);
@@ -207,8 +207,8 @@ export default function CollectionDetailPage() {
         <ConfirmCollectionDeleteModal onClose={() => setDeleteModalOpen(false)} onConfirm={removeCollection} />
       ) : null}
 
-      {infoModalMessage ? (
-        <MessageModal message={infoModalMessage} onClose={() => setInfoModalMessage(null)} />
+      {noSimilarAlertOpen ? (
+        <DemoAlert message="Нет похожих изображений" variant="info" onClose={() => setNoSimilarAlertOpen(false)} />
       ) : null}
     </div>
   );
