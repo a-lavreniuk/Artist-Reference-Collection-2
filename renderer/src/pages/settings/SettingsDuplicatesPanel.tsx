@@ -9,7 +9,62 @@ import {
   type CardRecord
 } from '../../services/db';
 import { fingerprintFromUrl, similarityCombined, type ImageDupFingerprint } from './imageDupHash';
+import { cardSizeToBytes } from '../../utils/cardSizeToBytes';
+import { formatBytes } from '../../utils/formatBytes';
 type Pair = { a: CardRecord; b: CardRecord; sim: number };
+
+type PairCardProps = {
+  card: CardRecord;
+  imageUrl: string;
+  absolutePath: string;
+  onDelete: () => void;
+  onSkip: () => void;
+};
+
+function toWindowsPath(rootAbs: string | null, relativePath: string): string {
+  const rel = relativePath.replace(/\//g, '\\');
+  if (!rootAbs) return rel;
+  const root = rootAbs.replace(/[\\/]+$/, '');
+  return `${root}\\${rel}`;
+}
+
+function formatImageInfo(card: CardRecord): { format: string; resolution: string; size: string } {
+  const format = (card.format ?? card.originalRelativePath.split('.').pop() ?? '—').toUpperCase();
+  const resolution = card.width && card.height ? `${card.width}×${card.height}` : '—';
+  const size = formatBytes(cardSizeToBytes(card));
+  return { format, resolution, size };
+}
+
+function PairCard({ card, imageUrl, absolutePath, onDelete, onSkip }: PairCardProps) {
+  const info = formatImageInfo(card);
+
+  return (
+    <article className="arc2-dup-card">
+      <div className="arc2-dup-card__preview">
+        <img className="arc2-dup-card__img" src={imageUrl} alt="" />
+      </div>
+      <div className="arc2-dup-card__body">
+        <p className="typo-p-m arc2-dup-card__path" title={absolutePath}>
+          {absolutePath}
+        </p>
+        <div className="arc2-dup-card__meta typo-p-m">
+          <span>{info.format}</span>
+          <span>{info.resolution}</span>
+          <span>{info.size}</span>
+        </div>
+        <div className="arc2-dup-card__actions">
+          <button type="button" className="btn btn-danger btn-ds" onClick={onDelete}>
+            <span className="btn-ds__value">Удалить эту</span>
+            <span className="btn-ds__icon arc2-dup-delete-icon" aria-hidden="true" />
+          </button>
+          <button type="button" className="btn btn-outline btn-ds" onClick={onSkip}>
+            <span className="btn-ds__value">Пропустить</span>
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export default function SettingsDuplicatesPanel() {
   const [threshold, setThreshold] = useState(85);
@@ -18,6 +73,7 @@ export default function SettingsDuplicatesPanel() {
   const [busy, setBusy] = useState(false);
   const [urlA, setUrlA] = useState<string | null>(null);
   const [urlB, setUrlB] = useState<string | null>(null);
+  const [libraryRootAbs, setLibraryRootAbs] = useState<string | null>(null);
 
   const loadThreshold = useCallback(async () => {
     setThreshold(await getDuplicateSimilarityThresholdPct());
@@ -28,6 +84,7 @@ export default function SettingsDuplicatesPanel() {
   }, [loadThreshold]);
 
   useEffect(() => {
+    if (scanTick === 0) return;
     if (!window.arc?.maintenanceBegin) return undefined;
     let cancelled = false;
 
@@ -101,6 +158,11 @@ export default function SettingsDuplicatesPanel() {
     };
   }, [scanTick]);
 
+  useEffect(() => {
+    if (!window.arc?.getLibraryPath) return;
+    void window.arc.getLibraryPath().then((path) => setLibraryRootAbs(path ?? null));
+  }, []);
+
   const skipPair = async () => {
     if (!current) return;
     await addSkippedDuplicatePair(current.a.id, current.b.id);
@@ -121,17 +183,9 @@ export default function SettingsDuplicatesPanel() {
   };
 
   return (
-    <div className="arc2-settings-stack">
-      <section className="arc2-settings-block panel elevation-sunken">
-        <h2 className="h2 arc2-settings-block__title">Поиск дублей</h2>
-        <p className="typo-p-m hint">
-          Порог сходства по комбинированной метрике (структура по поворотам и гистограмма яркости, веса 70/30 в коде). Скан — до 80
-          изображений.
-        </p>
-        <div className="field field-full input-live">
-          <label className="label" htmlFor="dup-threshold">
-            Порог, %
-          </label>
+    <div className="arc2-dup-screen">
+      <div className="arc2-dup-controls">
+        <div className="field input-live arc2-dup-controls__threshold">
           <input
             id="dup-threshold"
             className="input input--size-l"
@@ -147,39 +201,31 @@ export default function SettingsDuplicatesPanel() {
             }}
           />
         </div>
+        <button type="button" className="btn btn-primary btn-ds" onClick={() => setScanTick((t) => t + 1)} disabled={busy}>
+          <span className="btn-ds__value">{busy ? 'Поиск…' : 'Найти похожее'}</span>
+        </button>
+      </div>
 
-        {busy ? <p className="typo-p-m hint">Идёт поиск дублей…</p> : null}
+      {!busy && current && urlA && urlB ? (
+        <div className="arc2-dup-grid">
+          <PairCard
+            card={current.a}
+            imageUrl={urlA}
+            absolutePath={toWindowsPath(libraryRootAbs, current.a.originalRelativePath)}
+            onDelete={() => void removeOne(current.a.id)}
+            onSkip={() => void skipPair()}
+          />
+          <PairCard
+            card={current.b}
+            imageUrl={urlB}
+            absolutePath={toWindowsPath(libraryRootAbs, current.b.originalRelativePath)}
+            onDelete={() => void removeOne(current.b.id)}
+            onSkip={() => void skipPair()}
+          />
+        </div>
+      ) : null}
 
-        {!busy && current && urlA && urlB ? (
-          <div className="arc2-dup-pair">
-            <p className="typo-p-m">Сходство: {current.sim.toFixed(1)}%</p>
-            <div className="arc2-dup-pair__images">
-              <figure>
-                <img className="arc2-dup-thumb" src={urlA} alt="" />
-                <figcaption className="typo-p-m hint">Карточка A</figcaption>
-              </figure>
-              <figure>
-                <img className="arc2-dup-thumb" src={urlB} alt="" />
-                <figcaption className="typo-p-m hint">Карточка B</figcaption>
-              </figure>
-            </div>
-            <div className="arc2-settings-row arc2-settings-row--wrap">
-              <button type="button" className="btn btn-outline btn-ds" onClick={() => void skipPair()}>
-                <span className="btn-ds__value">Пропустить пару</span>
-              </button>
-              <button type="button" className="btn btn-danger btn-ds" onClick={() => void removeOne(current.a.id)}>
-                <span className="btn-ds__value">Удалить A</span>
-              </button>
-              <button type="button" className="btn btn-danger btn-ds" onClick={() => void removeOne(current.b.id)}>
-                <span className="btn-ds__value">Удалить B</span>
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {!busy && !current ? <p className="typo-p-m hint">Пар с выбранным порогом не найдено (в пределах выборки).</p> : null}
-      </section>
-
+      {!busy && scanTick > 0 && !current ? <p className="typo-p-m hint">Пары с выбранным порогом не найдено.</p> : null}
     </div>
   );
 }

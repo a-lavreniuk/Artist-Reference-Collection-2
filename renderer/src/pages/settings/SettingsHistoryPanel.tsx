@@ -73,36 +73,41 @@ export default function SettingsHistoryPanel() {
 
   const tabs: { key: FilterKey; label: string }[] = [
     { key: 'today', label: 'Сегодня' },
-    { key: 'week', label: 'Неделя' },
-    { key: 'month', label: 'Месяц' },
+    { key: 'week', label: 'За неделю' },
+    { key: 'month', label: 'За месяц' },
     { key: 'all', label: 'Вся история' }
   ];
 
   return (
-    <div className="arc2-settings-stack">
-      <section className="arc2-settings-block panel elevation-sunken">
-        <h2 className="h2 arc2-settings-block__title">История</h2>
-        <div className="tabs arc2-navbar-filters arc2-history-filters" role="tablist" aria-label="Период истории">
-          {tabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              className={`tab-button${filter === t.key ? ' is-active' : ''}`}
-              role="tab"
-              aria-selected={filter === t.key}
-              onClick={() => setFilter(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <ul className="arc2-settings-list arc2-history-list">
-          {filtered.map((e, i) => (
-            <li key={`${e.time}-${i}`} className="typo-p-m arc2-history-line">
-              <span className="hint arc2-history-time">{e.time}</span> — {e.message}
-            </li>
-          ))}
-        </ul>
+    <div className="arc2-settings-stack arc2-history-screen">
+      <div className="tabs arc2-history-tabs" role="tablist" aria-label="Период истории">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={`tab-button${filter === t.key ? ' is-active' : ''}`}
+            role="tab"
+            aria-selected={filter === t.key}
+            onClick={() => setFilter(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <section className="panel elevation-sunken arc2-history-container" aria-label="История действий">
+        {filtered.length === 0 ? (
+          <p className="typo-p-m arc2-history-empty">Нет записей за выбранный период.</p>
+        ) : (
+          <ul className="arc2-history-list" aria-live="polite">
+            {filtered.map((e, i) => (
+              <li key={`${e.time}-${i}`} className="arc2-history-item">
+                <span className="typo-p-m arc2-history-time">{e.time}</span>
+                <p className="typo-p-m arc2-history-message">{e.message}</p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

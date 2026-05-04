@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SettingsStoragePanel from './settings/SettingsStoragePanel';
 import SettingsStatisticsPanel from './settings/SettingsStatisticsPanel';
@@ -10,6 +10,7 @@ const VALID_SF = new Set(['storage', 'statistics', 'history', 'duplicates']);
 export default function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const sf = searchParams.get('sf') ?? 'storage';
+  const pageRef = useRef<HTMLDivElement>(null);
 
   const active = useMemo(() => (VALID_SF.has(sf) ? sf : 'storage'), [sf]);
 
@@ -26,9 +27,16 @@ export default function SettingsPage() {
     }
   }, [sf, setSearchParams]);
 
+  useEffect(() => {
+    const page = pageRef.current;
+    if (!page) return;
+    page.style.removeProperty('--arc2-dup-outlet-height');
+  }, [active]);
+
   return (
     <div
-      className="arc2-settings-page arc-ui-kit-scope"
+      ref={pageRef}
+      className={`arc2-settings-page arc-ui-kit-scope${active === 'duplicates' ? ' arc2-settings-page--duplicates' : ''}`}
       data-elevation="sunken"
       data-typo-role="primary"
       data-typo-tone="white"
