@@ -741,4 +741,27 @@ export function registerArcIpc(): void {
     }
     return { missing };
   });
+
+  ipcMain.handle('arc:sum-library-files-bytes', async (_e, rels: unknown) => {
+    const root = await readLibraryRootFromDisk();
+    if (!root) return { ok: false as const, error: 'Библиотека не выбрана' };
+    if (!Array.isArray(rels)) return { ok: false as const, error: 'Некорректные параметры' };
+    const seen = new Set<string>();
+    let totalBytes = 0;
+    for (const item of rels) {
+      if (typeof item !== 'string' || !item.trim()) continue;
+      const rel = item.replace(/\\/g, '/');
+      if (seen.has(rel)) continue;
+      seen.add(rel);
+      const abs = path.resolve(root, rel.split('/').join(path.sep));
+      if (!isInsideLibrary(root, abs)) continue;
+      try {
+        const st = await stat(abs);
+        if (st.isFile()) totalBytes += st.size;
+      } catch {
+        /* пропускаем отсутствующие */
+      }
+    }
+    return { ok: true as const, totalBytes };
+  });
 }

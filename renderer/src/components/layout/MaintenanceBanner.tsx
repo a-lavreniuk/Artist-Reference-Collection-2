@@ -1,5 +1,17 @@
 import { useEffect, useState } from 'react';
 
+/**
+ * Глобальный блокирующий оверлей на время операций обслуживания
+ * (бэкап, восстановление, миграция и т. п.).
+ *
+ * Бэкенд выставляет/снимает `maintenanceLock` через IPC и шлёт событие
+ * `arc:maintenance` (см. `src/main/maintenanceLock.ts`).
+ * Renderer подписывается через `window.arc.onMaintenance(locked => …)`.
+ *
+ * Пока `locked === true` поверх всего приложения отображается полупрозрачный
+ * оверлей с надписью «Идёт операция…». Алерты `DemoAlert` имеют более высокий
+ * `z-index` и остаются видимыми — пользователь видит прогресс/успех/ошибку.
+ */
 export default function MaintenanceBanner() {
   const [locked, setLocked] = useState(false);
 
@@ -11,8 +23,10 @@ export default function MaintenanceBanner() {
   if (!locked) return null;
 
   return (
-    <div className="arc2-maintenance-banner" role="status" aria-live="polite">
-      <p className="typo-p-m arc2-maintenance-banner__text">Идёт операция…</p>
+    <div className="arc2-maintenance-banner" role="status" aria-live="polite" aria-busy="true">
+      <div className="arc2-maintenance-banner__panel">
+        <p className="typo-p-m arc2-maintenance-banner__text">Идёт операция…</p>
+      </div>
     </div>
   );
 }

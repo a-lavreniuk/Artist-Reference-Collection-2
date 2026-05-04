@@ -60,6 +60,10 @@ declare global {
       }) => Promise<{ ok: true; restart: true } | { ok: false; error: string }>;
       consumePendingRestoreModal: () => Promise<{ message: string } | null>;
       verifyLibraryPaths: (relativePaths: string[]) => Promise<{ missing: string[] }>;
+      /** Сумма размеров файлов по относительным путям внутри текущей библиотеки (дедуп путей). */
+      sumLibraryFilesBytes: (
+        relativePaths: string[]
+      ) => Promise<{ ok: true; totalBytes: number } | { ok: false; error: string }>;
       maintenanceBegin: () => Promise<{ ok: true }>;
       maintenanceEnd: () => Promise<{ ok: true }>;
       onMaintenance: (cb: (locked: boolean) => void) => () => void;

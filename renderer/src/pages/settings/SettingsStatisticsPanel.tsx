@@ -7,13 +7,8 @@ import {
   deleteTag,
   type TagRecord
 } from '../../services/db';
-
-function formatBytes(n: number): string {
-  if (n < 1024) return `${n} Б`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} КБ`;
-  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} МБ`;
-  return `${(n / (1024 * 1024 * 1024)).toFixed(2)} ГБ`;
-}
+import { formatBytes } from '../../utils/formatBytes';
+import { computeSplitLibraryMediaBytesFromCards } from '../../utils/computeLibraryMediaBytesFromCards';
 
 export default function SettingsStatisticsPanel() {
   const [metrics, setMetrics] = useState<Awaited<ReturnType<typeof getNavbarMetrics>> | null>(null);
@@ -28,15 +23,14 @@ export default function SettingsStatisticsPanel() {
       const m = await getNavbarMetrics();
       setMetrics(m);
       const cards = await listCardsSorted('all');
-      let img = 0;
-      let vid = 0;
-      for (const c of cards) {
-        const sz = typeof c.fileSize === 'number' ? c.fileSize : 0;
-        if (c.type === 'image') img += sz;
-        else vid += sz;
+      if (window.arc) {
+        const { imageBytes, videoBytes } = await computeSplitLibraryMediaBytesFromCards(window.arc, cards);
+        setBytesImages(imageBytes);
+        setBytesVideos(videoBytes);
+      } else {
+        setBytesImages(0);
+        setBytesVideos(0);
       }
-      setBytesImages(img);
-      setBytesVideos(vid);
       const cats = await getAllCategories();
       const allTags: TagRecord[] = [];
       for (const cat of cats) {

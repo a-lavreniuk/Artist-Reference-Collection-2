@@ -65,6 +65,10 @@ contextBridge.exposeInMainWorld('arc', {
     ipcRenderer.invoke('arc:consume-pending-restore-modal') as Promise<{ message: string } | null>,
   verifyLibraryPaths: (relativePaths: string[]) =>
     ipcRenderer.invoke('arc:verify-library-paths', relativePaths) as Promise<{ missing: string[] }>,
+  sumLibraryFilesBytes: (relativePaths: string[]) =>
+    ipcRenderer.invoke('arc:sum-library-files-bytes', relativePaths) as Promise<
+      { ok: true; totalBytes: number } | { ok: false; error: string }
+    >,
   maintenanceBegin: () => ipcRenderer.invoke('arc:maintenance-begin') as Promise<{ ok: true }>,
   maintenanceEnd: () => ipcRenderer.invoke('arc:maintenance-end') as Promise<{ ok: true }>,
   onMaintenance: (cb: (locked: boolean) => void) => {

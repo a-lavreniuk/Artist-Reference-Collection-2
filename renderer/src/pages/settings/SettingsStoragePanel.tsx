@@ -3,14 +3,21 @@ import { getNavbarMetrics, invalidateLibraryCache, listCardsSorted } from '../..
 import type { ArcMetadataV1 } from '../../services/arcSchema';
 import { analyzeIntegrity, applyMetadataWarningFixes } from '../../services/libraryIntegrity';
 import MessageModal from '../../components/layout/MessageModal';
+import DemoAlert, { type DemoAlertVariant } from '../../components/layout/DemoAlert';
 import ConfirmModal from './ConfirmModal';
 import OldFolderModal from './OldFolderModal';
+import { formatBytesRoundedToMb } from '../../utils/formatBytes';
+import { computeLibraryMediaBytesFromCards } from '../../utils/computeLibraryMediaBytesFromCards';
 
 function runningInElectronShell(): boolean {
   return typeof navigator !== 'undefined' && navigator.userAgent.includes('Electron');
 }
 
 type BackupPart = 1 | 2 | 4 | 8;
+
+const BACKUP_PARTS: readonly BackupPart[] = [1, 2, 4, 8] as const;
+
+type BackupAlert = { variant: DemoAlertVariant; message: string };
 
 export default function SettingsStoragePanel() {
   const [libraryPath, setLibraryPath] = useState<string | null>(null);
@@ -20,9 +27,10 @@ export default function SettingsStoragePanel() {
   const [showMigrateConfirm, setShowMigrateConfirm] = useState(false);
   const [migrateError, setMigrateError] = useState<string | null>(null);
   const [oldFolderPath, setOldFolderPath] = useState<string | null>(null);
-  const [backupParts, setBackupParts] = useState<BackupPart>(1);
-  const [backupDest, setBackupDest] = useState<string | null>(null);
-  const [backupProgress, setBackupProgress] = useState<string | null>(null);
+  const [bytesTotal, setBytesTotal] = useState(0);
+  const [confirmedParts, setConfirmedParts] = useState<BackupPart | null>(null);
+  const [backupAlert, setBackupAlert] = useState<BackupAlert | null>(null);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [infoModal, setInfoModal] = useState<string | null>(null);
   const [warnModal, setWarnModal] = useState<{ text: string; onFix: () => void } | null>(null);
 
@@ -53,22 +61,65 @@ export default function SettingsStoragePanel() {
     setLibraryPath(await window.arc.getLibraryPath());
   }, []);
 
+  /**
+   * Суммарный объём медиа: байты из полей карточки + для записей без размера
+   * — реальные размеры файлов на диске (IPC), как у старых карточек до появления
+   * `fileSize` в БД.
+   */
+  const refreshBytesTotal = useCallback(async () => {
+    if (!window.arc) {
+      setBytesTotal(0);
+      return;
+    }
+    try {
+      const cards = await listCardsSorted('all');
+      setBytesTotal(await computeLibraryMediaBytesFromCards(window.arc, cards));
+    } catch {
+      setBytesTotal(0);
+    }
+  }, []);
+
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void refreshBytesTotal();
+  }, [refresh, refreshBytesTotal]);
 
+  useEffect(() => {
+    const onLibraryChanged = () => {
+      void refresh();
+      void refreshBytesTotal();
+    };
+    window.addEventListener('arc2:library-changed', onLibraryChanged);
+    return () => window.removeEventListener('arc2:library-changed', onLibraryChanged);
+  }, [refresh, refreshBytesTotal]);
+
+  /**
+   * Подписка на прогресс бэкапа. Источник — onBackupProgress.
+   * Алерт прогресса (info, без автоскрытия) обновляется на phase 'scan' и 'pack'.
+   * На 'done' и 'error' переключаемся на success/danger с обычным автоскрытием.
+   * При ошибке также сбрасываем подсветку группы.
+   */
   useEffect(() => {
     if (!window.arc?.onBackupProgress) return undefined;
     return window.arc.onBackupProgress((p) => {
-      const o = p as { percent?: number; phase?: string; message?: string; etaSeconds?: number };
-      if (o.phase === 'error' && o.message) setBackupProgress(null);
-      if (o.message && o.phase === 'error') {
-        setInfoModal(o.message);
+      const o = p as { percent?: number; phase?: string; message?: string };
+      if (o.phase === 'error') {
+        setBackupAlert({
+          variant: 'danger',
+          message: o.message?.trim() ? o.message : 'Не удалось создать резервную копию.'
+        });
+        setConfirmedParts(null);
         return;
       }
-      const pct = typeof o.percent === 'number' ? o.percent : 0;
-      const eta = typeof o.etaSeconds === 'number' ? `, ~${o.etaSeconds} с` : '';
-      setBackupProgress(`Бэкап: ${pct}%${eta}`);
+      if (o.phase === 'done') {
+        setBackupAlert({ variant: 'success', message: 'Резервная копия готова' });
+        return;
+      }
+      const pct = typeof o.percent === 'number' && Number.isFinite(o.percent) ? Math.round(o.percent) : 0;
+      setBackupAlert({
+        variant: 'info',
+        message: `Идёт создание резервной копии ${pct}%`
+      });
     });
   }, []);
 
@@ -141,33 +192,39 @@ export default function SettingsStoragePanel() {
     }
   };
 
-  const pickBackupDest = async () => {
-    if (!window.arc) return;
-    const p = await window.arc.pickLibraryFolder();
-    if (p) setBackupDest(p);
-  };
+  /**
+   * Текст для кнопки группы: вариант N=1 — единая подпись «Одним архивом X»,
+   * остальные — число + «вес части» в `btn-ds__counter`.
+   */
+  const perPartLabel = useCallback(
+    (n: BackupPart) => formatBytesRoundedToMb(bytesTotal / n),
+    [bytesTotal]
+  );
 
-  const startBackup = async () => {
-    if (!window.arc || !backupDest) {
-      setInfoModal('Выберите папку для сохранения бэкапа.');
+  /**
+   * Клик по любой кнопке группы (включая повторный клик по подсвеченной):
+   * 1) системный выбор папки;
+   * 2) при отмене — снимаем подсветку, ничего не запускаем;
+   * 3) при выборе — подсвечиваем N и запускаем бэкап.
+   */
+  const onClickBackupOption = useCallback(async (n: BackupPart) => {
+    if (!window.arc) return;
+    const dest = await window.arc.pickLibraryFolder();
+    if (!dest) {
+      setConfirmedParts(null);
       return;
     }
-    setBackupProgress('Запуск…');
-    const res = await window.arc.backupStart({ destDir: backupDest, partCount: backupParts });
+    setConfirmedParts(n);
+    setBackupAlert({ variant: 'info', message: 'Идёт создание резервной копии 0%' });
+    const res = await window.arc.backupStart({ destDir: dest, partCount: n });
     if (!res.ok) {
-      setBackupProgress(null);
-      setInfoModal(res.error ?? 'Ошибка бэкапа');
-    } else {
-      setBackupProgress('Готово');
-      setTimeout(() => setBackupProgress(null), 2000);
+      setConfirmedParts(null);
+      setBackupAlert({
+        variant: 'danger',
+        message: res.error?.trim() ? res.error : 'Не удалось создать резервную копию.'
+      });
     }
-  };
-
-  const cancelBackup = async () => {
-    if (!window.arc) return;
-    await window.arc.backupCancel();
-    setBackupProgress(null);
-  };
+  }, []);
 
   const runIntegrity = async () => {
     if (!window.arc) return;
@@ -213,18 +270,29 @@ export default function SettingsStoragePanel() {
     });
   };
 
-  const runRestore = async () => {
+  /**
+   * Сценарий восстановления (после подтверждения в ConfirmModal):
+   * выбор первой части архива → выбор пустой папки → restoreLibrary.
+   * Ошибки показываем через DemoAlert (вариант danger).
+   */
+  const runRestoreFlow = async () => {
+    setShowRestoreConfirm(false);
     if (!window.arc) return;
     const first = await window.arc.pickBackupArchive();
     if (!first) return;
     const dest = await window.arc.pickLibraryFolder();
     if (!dest) return;
     if (!(await window.arc.dirIsEmpty(dest))) {
-      setInfoModal('Папка восстановления должна быть пустой.');
+      setBackupAlert({ variant: 'danger', message: 'Папка восстановления должна быть пустой.' });
       return;
     }
     const res = await window.arc.restoreLibrary({ firstPartPath: first, destDir: dest });
-    if (!res.ok) setInfoModal(res.error);
+    if (!res.ok) {
+      setBackupAlert({
+        variant: 'danger',
+        message: res.error?.trim() ? res.error : 'Не удалось восстановить библиотеку.'
+      });
+    }
   };
 
   return (
@@ -262,64 +330,59 @@ export default function SettingsStoragePanel() {
         </section>
 
         <section className="arc2-settings-block panel elevation-sunken arc2-settings-block--tile">
-        <h2 className="h2 arc2-settings-block__title">Резервная копия и восстановление</h2>
-        <div className="arc2-settings-field-row">
-          <span className="label">Части</span>
-          <div className="arc2-settings-segment">
-            {([1, 2, 4, 8] as const).map((n) => (
+          <div className="arc2-settings-storage-layout">
+            <span className="arc2-settings-storage-icon arc2-settings-storage-icon--copy" aria-hidden="true" />
+            <div className="arc2-settings-storage-head">
+              <h2 className="h2 arc2-settings-block__title arc2-settings-storage-title">Резервная копия</h2>
+              <p className="typo-p-l arc2-settings-storage-subtitle">
+                Создание архивной копии базы данных. Архив можно разделить на несколько частей
+              </p>
+            </div>
+            <div className="arc2-settings-backup-controls">
+              <div className="btn-group btn-group-ds" role="group" aria-label="Количество частей резервной копии">
+                {BACKUP_PARTS.map((n) => {
+                  const selected = confirmedParts === n;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      className={`btn btn-outline btn-ds${selected ? ' state-hover' : ''}`}
+                      onClick={() => void onClickBackupOption(n)}
+                      disabled={!window.arc}
+                      aria-pressed={selected}
+                    >
+                      {n === 1 ? (
+                        <>
+                          <span className="btn-ds__value">Одним архивом</span>
+                          <span className="btn-ds__counter">{perPartLabel(n)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="btn-ds__value">{n}</span>
+                          <span className="btn-ds__counter">{perPartLabel(n)}</span>
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
               <button
-                key={n}
                 type="button"
-                className={`btn btn-ds btn-s${backupParts === n ? ' btn-primary' : ' btn-outline'}`}
-                onClick={() => setBackupParts(n)}
+                className="btn btn-secondary btn-ds"
+                onClick={() => setShowRestoreConfirm(true)}
+                disabled={!window.arc}
               >
-                <span className="btn-ds__value">{n === 1 ? 'Один файл' : String(n)}</span>
+                <span className="btn-ds__value">Восстановить резервную копию</span>
               </button>
-            ))}
+            </div>
           </div>
-        </div>
-        <div className="arc2-settings-row">
-          <div className="field field-full input-live">
-            <label className="label" htmlFor="arc2-settings-backup-dest">
-              Папка сохранения
-            </label>
-            <input
-              id="arc2-settings-backup-dest"
-              className="input input--size-l"
-              readOnly
-              value={backupDest ?? 'Не выбрана'}
-            />
-          </div>
-          <button type="button" className="btn btn-outline btn-ds" onClick={() => void pickBackupDest()} disabled={!window.arc}>
-            <span className="btn-ds__value">Выбрать</span>
-          </button>
-        </div>
-        <div className="arc2-settings-row arc2-settings-row--wrap">
-          <button type="button" className="btn btn-primary btn-ds" onClick={() => void startBackup()} disabled={!window.arc}>
-            <span className="btn-ds__value">Создать бэкап</span>
-          </button>
-          <button type="button" className="btn btn-outline btn-ds" onClick={() => void cancelBackup()} disabled={!window.arc}>
-            <span className="btn-ds__value">Отменить бэкап</span>
-          </button>
-        </div>
-        {backupProgress ? <p className="typo-p-m hint">{backupProgress}</p> : null}
-        <div className="arc2-settings-restore">
-          <p className="typo-p-m hint">
-            Восстановление: первый файл <code className="typo-p-m">.part01</code> или одиночный <code className="typo-p-m">.arc</code>, затем пустая папка. Приложение перезапустится.
-          </p>
-          <div className="arc2-settings-row arc2-settings-row--wrap">
-            <button type="button" className="btn btn-outline btn-ds" onClick={() => void runRestore()} disabled={!window.arc}>
-              <span className="btn-ds__value">Восстановить из бэкапа…</span>
-            </button>
-          </div>
-        </div>
         </section>
 
         <section className="arc2-settings-block panel elevation-sunken arc2-settings-block--tile">
-        <h2 className="h2 arc2-settings-block__title">Проверка данных</h2>
-        <button type="button" className="btn btn-secondary btn-ds" onClick={() => void runIntegrity()} disabled={!window.arc}>
-          <span className="btn-ds__value">Проверить</span>
-        </button>
+          <h2 className="h2 arc2-settings-block__title">Проверка данных</h2>
+          <button type="button" className="btn btn-secondary btn-ds" onClick={() => void runIntegrity()} disabled={!window.arc}>
+            <span className="btn-ds__value">Проверить</span>
+          </button>
         </section>
       </div>
 
@@ -333,6 +396,16 @@ export default function SettingsStoragePanel() {
             setMigrateTarget(null);
           }}
           onConfirm={() => void runMigrate()}
+        />
+      ) : null}
+
+      {showRestoreConfirm ? (
+        <ConfirmModal
+          title="Восстановление"
+          message="Восстановление заменит текущую библиотеку. Приложение перезапустится после завершения. Продолжить?"
+          confirmLabel="Продолжить"
+          onCancel={() => setShowRestoreConfirm(false)}
+          onConfirm={() => void runRestoreFlow()}
         />
       ) : null}
 
@@ -364,6 +437,15 @@ export default function SettingsStoragePanel() {
           cancelLabel="Закрыть"
           onCancel={() => setWarnModal(null)}
           onConfirm={() => void warnModal.onFix()}
+        />
+      ) : null}
+
+      {backupAlert ? (
+        <DemoAlert
+          message={backupAlert.message}
+          variant={backupAlert.variant}
+          onClose={() => setBackupAlert(null)}
+          autoDismissMs={backupAlert.variant === 'info' ? 0 : undefined}
         />
       ) : null}
     </div>
