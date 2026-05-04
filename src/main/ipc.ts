@@ -87,6 +87,30 @@ function isInsideLibrary(libRoot: string, candidateAbs: string): boolean {
   return rel !== '' && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
+/** Все файлы под `media/` с путями относительно корня библиотеки (`media/...`). */
+async function walkLibraryMediaRelativeFiles(rootAbs: string): Promise<string[]> {
+  const out: string[] = [];
+  async function walk(sub: string): Promise<void> {
+    const base = path.join(rootAbs, ...sub.split('/').filter(Boolean));
+    let entries;
+    try {
+      entries = await readdir(base, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const ent of entries) {
+      const relJoin = sub ? `${sub}/${ent.name}` : ent.name;
+      if (ent.isDirectory()) {
+        await walk(relJoin);
+      } else if (ent.isFile()) {
+        out.push(relJoin.replace(/\\/g, '/'));
+      }
+    }
+  }
+  await walk('media');
+  return out;
+}
+
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp']);
 
 function isImageExt(ext: string): boolean {
@@ -740,6 +764,32 @@ export function registerArcIpc(): void {
       }
     }
     return { missing };
+  });
+
+  /** Файлы на диске в `media/` и в корне библиотеки (кроме arc2-metadata.json), которых нет в переданном списке ссылок из метаданных. */
+  ipcMain.handle('arc:scan-library-orphan-files', async (_e, referencedList: unknown) => {
+    const root = await readLibraryRootFromDisk();
+    if (!root) return { orphans: [] as string[] };
+    if (!Array.isArray(referencedList)) return { orphans: [] as string[] };
+    const referenced = new Set<string>();
+    for (const r of referencedList) {
+      if (typeof r !== 'string' || !r.trim()) continue;
+      referenced.add(r.replace(/\\/g, '/'));
+    }
+    const diskRel: string[] = [...(await walkLibraryMediaRelativeFiles(root))];
+    try {
+      const top = await readdir(root, { withFileTypes: true });
+      for (const ent of top) {
+        if (!ent.isFile()) continue;
+        if (ent.name === METADATA_FILENAME) continue;
+        diskRel.push(ent.name.replace(/\\/g, '/'));
+      }
+    } catch {
+      /* пропуск */
+    }
+    const orphans = diskRel.filter((rel) => !referenced.has(rel));
+    orphans.sort((a, b) => a.localeCompare(b, 'en'));
+    return { orphans };
   });
 
   ipcMain.handle('arc:sum-library-files-bytes', async (_e, rels: unknown) => {

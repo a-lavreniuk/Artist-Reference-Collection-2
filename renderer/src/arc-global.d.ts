@@ -60,6 +60,8 @@ declare global {
       }) => Promise<{ ok: true; restart: true } | { ok: false; error: string }>;
       consumePendingRestoreModal: () => Promise<{ message: string } | null>;
       verifyLibraryPaths: (relativePaths: string[]) => Promise<{ missing: string[] }>;
+      /** Файлы в `media/` и в корне библиотеки, не перечисленные в ссылках из метаданных. */
+      scanLibraryOrphanFiles: (referencedPaths: string[]) => Promise<{ orphans: string[] }>;
       /** Сумма размеров файлов по относительным путям внутри текущей библиотеки (дедуп путей). */
       sumLibraryFilesBytes: (
         relativePaths: string[]
