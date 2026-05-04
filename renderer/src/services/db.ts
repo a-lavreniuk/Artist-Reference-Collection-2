@@ -57,6 +57,15 @@ function hasArcApi(): boolean {
   return typeof window !== 'undefined' && typeof window.arc !== 'undefined';
 }
 
+async function tryAppendLibraryHistory(message: string): Promise<void> {
+  if (!hasArcApi() || !window.arc?.appendHistoryLine) return;
+  try {
+    await window.arc.appendHistoryLine(message);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** После смены пути библиотеки в настройках */
 export function invalidateLibraryCache(): void {
   metadataBlob = null;
@@ -113,6 +122,17 @@ function normalizeMetadataShape(meta: ArcMetadataV1): void {
   if (!Array.isArray(meta.cards)) meta.cards = [];
   if (!Array.isArray(meta.collections)) meta.collections = [];
   if (!Array.isArray(meta.moodboardCardIds)) meta.moodboardCardIds = [];
+  if (typeof meta.duplicateSimilarityThresholdPct !== 'number' || !Number.isFinite(meta.duplicateSimilarityThresholdPct)) {
+    meta.duplicateSimilarityThresholdPct = 85;
+  } else {
+    meta.duplicateSimilarityThresholdPct = Math.min(100, Math.max(50, meta.duplicateSimilarityThresholdPct));
+  }
+  if (!Array.isArray(meta.skippedDuplicatePairs)) meta.skippedDuplicatePairs = [];
+  else {
+    meta.skippedDuplicatePairs = meta.skippedDuplicatePairs
+      .filter((x): x is [string, string] => Array.isArray(x) && x.length === 2 && typeof x[0] === 'string' && typeof x[1] === 'string')
+      .map(([a, b]) => (a < b ? [a, b] : [b, a]) as [string, string]);
+  }
 }
 
 async function persistBlob(): Promise<void> {
@@ -633,7 +653,8 @@ export async function updateTag(
 
 export async function deleteTag(tagId: string): Promise<void> {
   const tags = await readTagsUnified();
-  if (!tags.some((t) => t.id === tagId)) {
+  const removed = tags.find((t) => t.id === tagId);
+  if (!removed) {
     throw new Error('Метка не найдена');
   }
   await persistTags(tags.filter((t) => t.id !== tagId));
@@ -646,6 +667,37 @@ export async function deleteTag(tagId: string): Promise<void> {
   }
   notifyTagsChanged();
   notifyCardsChanged();
+  void tryAppendLibraryHistory(`Удалена метка «${removed.name}»`);
+}
+
+export async function getDuplicateSimilarityThresholdPct(): Promise<number> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    normalizeMetadataShape(metadataBlob);
+    return metadataBlob.duplicateSimilarityThresholdPct ?? 85;
+  }
+  return 85;
+}
+
+export async function setDuplicateSimilarityThresholdPct(pct: number): Promise<void> {
+  const b = await resolveBackend();
+  if (b !== 'file' || !metadataBlob) return;
+  normalizeMetadataShape(metadataBlob);
+  metadataBlob.duplicateSimilarityThresholdPct = Math.min(100, Math.max(50, pct));
+  await persistBlob();
+}
+
+export async function addSkippedDuplicatePair(idA: string, idB: string): Promise<void> {
+  const b = await resolveBackend();
+  if (b !== 'file' || !metadataBlob) return;
+  normalizeMetadataShape(metadataBlob);
+  const pair: [string, string] = idA < idB ? [idA, idB] : [idB, idA];
+  const cur = [...(metadataBlob.skippedDuplicatePairs ?? [])];
+  if (!cur.some(([x, y]) => x === pair[0] && y === pair[1])) {
+    cur.push(pair);
+  }
+  metadataBlob.skippedDuplicatePairs = cur;
+  await persistBlob();
 }
 
 export async function moveTagToCategory(tagId: string, targetCategoryId: string): Promise<void> {
@@ -728,6 +780,8 @@ export async function addCollection(name: string): Promise<CollectionRecord> {
 }
 
 export async function deleteCollection(collectionId: string): Promise<void> {
+  const existingCols = await getAllCollections();
+  const removed = existingCols.find((c) => c.id === collectionId);
   const b = await resolveBackend();
   if (b === 'file' && metadataBlob) {
     metadataBlob.collections = metadataBlob.collections.filter((c) => {
@@ -756,6 +810,9 @@ export async function deleteCollection(collectionId: string): Promise<void> {
   }
   notifyCollectionsChanged();
   notifyCardsChanged();
+  if (removed?.name) {
+    void tryAppendLibraryHistory(`Удалена коллекция «${removed.name}»`);
+  }
 }
 
 export async function renameCollection(collectionId: string, name: string): Promise<void> {
@@ -1050,6 +1107,8 @@ export async function insertImportedCards(newCards: CardRecord[]): Promise<void>
     recomputeTagUsageCounts();
     await persistBlob();
     notifyCardsChanged();
+    const n = newCards.length;
+    void tryAppendLibraryHistory(n === 1 ? 'Импорт: добавлена 1 карточка' : `Импорт: добавлено ${n} карточек`);
     return;
   }
   const legacy = safeReadArray<{ id: string; type?: string }>(STORAGE_KEYS.cards);
@@ -1145,6 +1204,7 @@ export async function deleteCard(cardId: string): Promise<void> {
       await window.arc!.deleteFileIfInsideLibrary(thumbPath);
     }
   }
+  void tryAppendLibraryHistory('Удалена карточка');
   notifyCardsChanged();
   notifyTagsChanged();
 }

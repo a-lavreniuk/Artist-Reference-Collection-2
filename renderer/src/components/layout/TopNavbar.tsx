@@ -68,6 +68,7 @@ export default function TopNavbar() {
   const [collectionDetailTitle, setCollectionDetailTitle] = useState('');
   const [addQueueHasItems, setAddQueueHasItems] = useState(false);
   const [addQueueCount, setAddQueueCount] = useState(0);
+  const [maintenanceLocked, setMaintenanceLocked] = useState(false);
 
   const galleryFilter = searchParams.get('gf') ?? 'all';
   const moodboardFilter = searchParams.get('mf') ?? 'cards';
@@ -169,6 +170,11 @@ export default function TopNavbar() {
   }, []);
 
   useEffect(() => {
+    if (!window.arc?.onMaintenance) return undefined;
+    return window.arc.onMaintenance((v) => setMaintenanceLocked(v));
+  }, []);
+
+  useEffect(() => {
     const fn = (e: Event) => {
       const ce = e as CustomEvent<{ title?: string }>;
       setCollectionDetailTitle(typeof ce.detail?.title === 'string' ? ce.detail.title : '');
@@ -229,11 +235,17 @@ export default function TopNavbar() {
     { key: 'board', label: 'Доска', iconClass: 'arc2-icon-whiteboard' }
   ];
 
-  const settingsTabs: TabItem[] = [{ key: 'storage', label: 'Хранилище', iconClass: 'arc2-icon-hard-drive' }];
+  const settingsTabs: TabItem[] = [
+    { key: 'storage', label: 'Хранилище', iconClass: 'arc2-icon-hard-drive' },
+    { key: 'statistics', label: 'Статистика', iconClass: 'arc2-icon-pie-chart' },
+    { key: 'history', label: 'История', iconClass: 'arc2-icon-history' },
+    { key: 'duplicates', label: 'Поиск дублей', iconClass: 'arc2-icon-copy' }
+  ];
 
   const title = getTitle(activeView, collectionDetailTitle);
 
   const handleMainTabClick = (path: string) => {
+    if (maintenanceLocked) return;
     navigate(path);
   };
 
@@ -256,7 +268,8 @@ export default function TopNavbar() {
     showAddCategoryModal,
     uiKitElev,
     uiKitSize,
-    collectionDetailTitle
+    collectionDetailTitle,
+    maintenanceLocked
   ]);
 
   const requestCollectionsAdd = () => {
@@ -291,6 +304,7 @@ export default function TopNavbar() {
                     type="button"
                     role="tab"
                     aria-selected={isActive}
+                    disabled={maintenanceLocked}
                     onClick={() => handleMainTabClick(tab.path)}
                   >
                     {tab.label}
@@ -308,7 +322,11 @@ export default function TopNavbar() {
             <button
               className="btn btn-primary btn-ds arc2-navbar-add"
               type="button"
-              onClick={() => navigate('/add')}
+              disabled={maintenanceLocked}
+              onClick={() => {
+                if (maintenanceLocked) return;
+                navigate('/add');
+              }}
             >
               <span className="btn-ds__value">Добавить карточки</span>
               <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>
@@ -366,16 +384,27 @@ export default function TopNavbar() {
                 items={galleryTabs}
                 activeKey={galleryFilter}
                 onChange={setGalleryFilter}
+                disabled={maintenanceLocked}
               />
             )}
             {activeView === 'tags' && (
-              <button className="btn btn-secondary btn-ds" type="button" onClick={openAddCategoryModal}>
+              <button
+                className="btn btn-secondary btn-ds"
+                type="button"
+                disabled={maintenanceLocked}
+                onClick={openAddCategoryModal}
+              >
                 <span className="btn-ds__value">Добавить категорию</span>
                 <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>
               </button>
             )}
             {activeView === 'collections' && (
-              <button className="btn btn-secondary btn-ds" type="button" onClick={requestCollectionsAdd}>
+              <button
+                className="btn btn-secondary btn-ds"
+                type="button"
+                disabled={maintenanceLocked}
+                onClick={requestCollectionsAdd}
+              >
                 <span className="btn-ds__value">Добавить коллекцию</span>
                 <span className="btn-ds__icon arc2-icon-plus" aria-hidden="true"></span>
               </button>
@@ -386,6 +415,7 @@ export default function TopNavbar() {
                 items={moodboardTabs}
                 activeKey={moodboardFilter}
                 onChange={setMoodboardFilter}
+                disabled={maintenanceLocked}
               />
             )}
             {activeView === 'settings' && (
@@ -420,6 +450,7 @@ export default function TopNavbar() {
                   items={galleryTabs}
                   activeKey={galleryFilter}
                   onChange={setGalleryFilter}
+                  disabled={maintenanceLocked}
                 />
               </div>
             )}
@@ -525,12 +556,14 @@ function FilterTabs({
   ariaLabel,
   items,
   activeKey,
-  onChange
+  onChange,
+  disabled = false
 }: {
   ariaLabel: string;
   items: TabItem[];
   activeKey: string;
   onChange: (key: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="tabs arc2-navbar-filters" role="tablist" aria-label={ariaLabel}>
@@ -543,7 +576,11 @@ function FilterTabs({
             type="button"
             role="tab"
             aria-selected={isActive}
-            onClick={() => onChange(item.key)}
+            disabled={disabled}
+            onClick={() => {
+              if (disabled) return;
+              onChange(item.key);
+            }}
           >
             <span className={`tab-icon ${item.iconClass}`} aria-hidden="true"></span>
             <span>{item.label}</span>

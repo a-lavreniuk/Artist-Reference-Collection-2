@@ -18,6 +18,14 @@ export type ArcImportedMediaRow = {
 
 export type ArcImportFileResult = { ok: true; row: ArcImportedMediaRow } | { ok: false; error: string };
 
+export type ArcBackupProgress = {
+  phase?: string;
+  percent?: number;
+  bytesPerSecond?: number;
+  etaSeconds?: number;
+  message?: string;
+};
+
 declare global {
   interface Window {
     arc?: {
@@ -29,13 +37,32 @@ declare global {
       pickImageFiles: () => Promise<string[]>;
       pickMediaFiles: () => Promise<string[]>;
       importFiles: (absolutePaths: string[]) => Promise<ArcImportFileResult[]>;
-      /** Относительный путь внутри библиотеки или абсолютный путь к файлу на диске (для предпросмотра до импорта). */
       toFileUrl: (path: string) => Promise<string | null>;
       deleteFileIfInsideLibrary: (relativePath: string) => Promise<void>;
       showItemInFolder: (relativePath: string) => Promise<void>;
+      showAbsoluteInFolder: (absPath: string) => Promise<void>;
       saveMediaToFolder: (
         relativePath: string
       ) => Promise<{ ok: true; destinationPath: string } | { ok: false; canceled?: boolean; error?: string }>;
+
+      dirIsEmpty: (absPath: string) => Promise<boolean>;
+      migrateLibrary: (targetPath: string) => Promise<{ ok: true; oldLibraryPath: string } | { ok: false; error: string }>;
+      trashPath: (absPath: string) => Promise<{ ok: true } | { ok: false; error?: string }>;
+      readHistory: () => Promise<Array<{ time: string; message: string }>>;
+      appendHistoryLine: (message: string) => Promise<void>;
+      pickBackupArchive: () => Promise<string | null>;
+      backupStart: (opts: { destDir: string; partCount: 1 | 2 | 4 | 8 }) => Promise<{ ok: true } | { ok: false; error: string }>;
+      backupCancel: () => Promise<{ ok: true }>;
+      onBackupProgress: (cb: (p: ArcBackupProgress) => void) => () => void;
+      restoreLibrary: (payload: {
+        firstPartPath: string;
+        destDir: string;
+      }) => Promise<{ ok: true; restart: true } | { ok: false; error: string }>;
+      consumePendingRestoreModal: () => Promise<{ message: string } | null>;
+      verifyLibraryPaths: (relativePaths: string[]) => Promise<{ missing: string[] }>;
+      maintenanceBegin: () => Promise<{ ok: true }>;
+      maintenanceEnd: () => Promise<{ ok: true }>;
+      onMaintenance: (cb: (locked: boolean) => void) => () => void;
     };
   }
 }
