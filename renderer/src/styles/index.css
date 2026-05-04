@@ -1659,6 +1659,18 @@ button.color-swatch-inline:disabled {
   mask-size: contain;
 }
 
+.arc2-settings-storage-icon--file-search {
+  background-color: var(--icons-white-default);
+  -webkit-mask-image: url("/ui/icons/file-search_xl.svg");
+  mask-image: url("/ui/icons/file-search_xl.svg");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
 .arc2-settings-storage-title {
   margin: 0;
 }

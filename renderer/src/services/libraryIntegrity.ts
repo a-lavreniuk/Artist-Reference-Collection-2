@@ -6,6 +6,45 @@ export type IntegrityIssue = {
   detail: string;
 };
 
+/** Предупреждения, которые не снимает applyMetadataWarningFixes (нужна ручная чистка или это отчёт о файлах). */
+export const NON_FIXABLE_WARNING_CODES = new Set([
+  'orphan_files',
+  'duplicate_original_path',
+  'duplicate_thumb_path'
+]);
+
+const ORPHAN_DETAIL_MAX_LINES = 40;
+
+export function isWarningFixable(issue: IntegrityIssue): boolean {
+  return issue.level === 'warning' && !NON_FIXABLE_WARNING_CODES.has(issue.code);
+}
+
+/** Все относительные пути медиа из метаданных (для проверки диска и поиска лишних файлов). */
+export function collectReferencedMediaPathsFromMeta(meta: ArcMetadataV1): string[] {
+  const rels = new Set<string>();
+  for (const raw of meta.cards ?? []) {
+    const c = asCard(raw);
+    if (!c) continue;
+    rels.add(c.originalRelativePath.replace(/\\/g, '/'));
+    rels.add(c.thumbRelativePath.replace(/\\/g, '/'));
+  }
+  return [...rels];
+}
+
+function buildOrphanFilesIssue(orphanPaths: string[]): IntegrityIssue {
+  const n = orphanPaths.length;
+  const lines = orphanPaths.slice(0, ORPHAN_DETAIL_MAX_LINES);
+  let detail = `Лишние файлы в библиотеке (${n}):\n${lines.join('\n')}`;
+  if (n > ORPHAN_DETAIL_MAX_LINES) {
+    detail += `\n… и ещё ${n - ORPHAN_DETAIL_MAX_LINES} файлов`;
+  }
+  return {
+    level: 'warning',
+    code: 'orphan_files',
+    detail
+  };
+}
+
 function asTag(r: unknown): { id: string; categoryId: string; usageCount: number } | null {
   if (!r || typeof r !== 'object') return null;
   const o = r as Record<string, unknown>;
@@ -55,12 +94,100 @@ function asCard(r: unknown): CardRecord | null {
   };
 }
 
-export function analyzeIntegrity(meta: ArcMetadataV1, missingRelPaths: Set<string>): IntegrityIssue[] {
+export function analyzeIntegrity(
+  meta: ArcMetadataV1,
+  missingRelPaths: Set<string>,
+  orphanPaths?: string[]
+): IntegrityIssue[] {
   const issues: IntegrityIssue[] = [];
+
+  const rawCards = meta.cards ?? [];
+  for (let i = 0; i < rawCards.length; i++) {
+    if (asCard(rawCards[i]) === null) {
+      issues.push({
+        level: 'error',
+        code: 'invalid_card_row',
+        detail: `Карточка в метаданных [${i}]: некорректная запись`
+      });
+    }
+  }
+
   const tags = (meta.tags ?? []).map(asTag).filter((t): t is NonNullable<typeof t> => t !== null);
   const cats = (meta.categories ?? []).map(asCat).filter((c): c is NonNullable<typeof c> => c !== null);
   const cols = (meta.collections ?? []).map(asCol).filter((c): c is CollectionRecord => c !== null);
   const cards = (meta.cards ?? []).map(asCard).filter((c): c is CardRecord => c !== null);
+
+  const countIds = (ids: string[]): Map<string, number> => {
+    const m = new Map<string, number>();
+    for (const id of ids) {
+      m.set(id, (m.get(id) ?? 0) + 1);
+    }
+    return m;
+  };
+
+  for (const [id, n] of countIds(cards.map((c) => c.id))) {
+    if (n > 1) {
+      issues.push({
+        level: 'error',
+        code: 'duplicate_card_id',
+        detail: `Повторяется id карточки: ${id} (${n} раз)`
+      });
+    }
+  }
+  for (const [id, n] of countIds(tags.map((t) => t.id))) {
+    if (n > 1) {
+      issues.push({
+        level: 'error',
+        code: 'duplicate_tag_id',
+        detail: `Повторяется id метки: ${id} (${n} раз)`
+      });
+    }
+  }
+  for (const [id, n] of countIds(cats.map((c) => c.id))) {
+    if (n > 1) {
+      issues.push({
+        level: 'error',
+        code: 'duplicate_category_id',
+        detail: `Повторяется id категории: ${id} (${n} раз)`
+      });
+    }
+  }
+  for (const [id, n] of countIds(cols.map((c) => c.id))) {
+    if (n > 1) {
+      issues.push({
+        level: 'error',
+        code: 'duplicate_collection_id',
+        detail: `Повторяется id коллекции: ${id} (${n} раз)`
+      });
+    }
+  }
+
+  const byOriginal = new Map<string, string[]>();
+  const byThumb = new Map<string, string[]>();
+  for (const c of cards) {
+    const o = c.originalRelativePath.replace(/\\/g, '/');
+    const t = c.thumbRelativePath.replace(/\\/g, '/');
+    if (!byOriginal.has(o)) byOriginal.set(o, []);
+    byOriginal.get(o)!.push(c.id);
+    if (!byThumb.has(t)) byThumb.set(t, []);
+    byThumb.get(t)!.push(c.id);
+  }
+  for (const [rel, ids] of byOriginal) {
+    if (!rel || ids.length < 2) continue;
+    issues.push({
+      level: 'warning',
+      code: 'duplicate_original_path',
+      detail: `Один файл оригинала у нескольких карточек (${ids.join(', ')}): ${rel}`
+    });
+  }
+  for (const [rel, ids] of byThumb) {
+    if (!rel || ids.length < 2) continue;
+    issues.push({
+      level: 'warning',
+      code: 'duplicate_thumb_path',
+      detail: `Один файл превью у нескольких карточек (${ids.join(', ')}): ${rel}`
+    });
+  }
 
   const catIds = new Set(cats.map((c) => c.id));
   const tagIds = new Set(tags.map((t) => t.id));
@@ -68,18 +195,20 @@ export function analyzeIntegrity(meta: ArcMetadataV1, missingRelPaths: Set<strin
   const cardIds = new Set(cards.map((c) => c.id));
 
   for (const c of cards) {
-    if (missingRelPaths.has(c.originalRelativePath)) {
+    const orig = c.originalRelativePath.replace(/\\/g, '/');
+    const thumb = c.thumbRelativePath.replace(/\\/g, '/');
+    if (missingRelPaths.has(orig)) {
       issues.push({
         level: 'error',
         code: 'missing_original',
-        detail: `Нет файла оригинала: ${c.originalRelativePath}`
+        detail: `Нет файла оригинала: ${orig}`
       });
     }
-    if (missingRelPaths.has(c.thumbRelativePath)) {
+    if (missingRelPaths.has(thumb)) {
       issues.push({
         level: 'error',
         code: 'missing_thumb',
-        detail: `Нет превью: ${c.thumbRelativePath}`
+        detail: `Нет превью: ${thumb}`
       });
     }
     for (const tid of c.tagIds) {
@@ -137,6 +266,10 @@ export function analyzeIntegrity(meta: ArcMetadataV1, missingRelPaths: Set<strin
         detail: `Мудборд: несуществующая карточка ${mid}`
       });
     }
+  }
+
+  if (orphanPaths && orphanPaths.length > 0) {
+    issues.push(buildOrphanFilesIssue(orphanPaths));
   }
 
   return issues;

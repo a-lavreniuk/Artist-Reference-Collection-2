@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getNavbarMetrics, invalidateLibraryCache, listCardsSorted } from '../../services/db';
 import type { ArcMetadataV1 } from '../../services/arcSchema';
-import { analyzeIntegrity, applyMetadataWarningFixes } from '../../services/libraryIntegrity';
+import {
+  analyzeIntegrity,
+  applyMetadataWarningFixes,
+  collectReferencedMediaPathsFromMeta,
+  isWarningFixable
+} from '../../services/libraryIntegrity';
 import MessageModal from '../../components/layout/MessageModal';
 import DemoAlert, { type DemoAlertVariant } from '../../components/layout/DemoAlert';
 import ConfirmModal from './ConfirmModal';
@@ -33,6 +38,7 @@ export default function SettingsStoragePanel() {
   const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
   const [infoModal, setInfoModal] = useState<string | null>(null);
   const [warnModal, setWarnModal] = useState<{ text: string; onFix: () => void } | null>(null);
+  const [integrityBusy, setIntegrityBusy] = useState(false);
 
   const arcHint = useMemo(() => {
     if (typeof window === 'undefined' || window.arc) return null;
@@ -228,46 +234,79 @@ export default function SettingsStoragePanel() {
 
   const runIntegrity = async () => {
     if (!window.arc) return;
-    const meta = (await window.arc.readMetadata()) as ArcMetadataV1 | null;
-    if (!meta) {
-      setInfoModal('Нет метаданных библиотеки.');
-      return;
-    }
-    const cards = await listCardsSorted('all');
-    const rels = new Set<string>();
-    for (const c of cards) {
-      rels.add(c.originalRelativePath);
-      rels.add(c.thumbRelativePath);
-    }
-    const { missing } = await window.arc.verifyLibraryPaths([...rels]);
-    const missSet = new Set(missing);
-    const issues = analyzeIntegrity(meta, missSet);
-    const errors = issues.filter((i) => i.level === 'error');
-    const warnings = issues.filter((i) => i.level === 'warning');
-    if (errors.length > 0) {
-      setInfoModal(errors.map((e) => e.detail).join('\n'));
-      return;
-    }
-    if (warnings.length === 0) {
-      setInfoModal('Проверка завершена: проблем не найдено.');
-      return;
-    }
-    setWarnModal({
-      text: warnings.map((w) => w.detail).join('\n'),
-      onFix: async () => {
-        setWarnModal(null);
-        const arc = window.arc;
-        if (!arc) return;
-        const fixed = applyMetadataWarningFixes(meta);
-        await arc.writeMetadata(fixed);
-        invalidateLibraryCache();
-        window.dispatchEvent(new CustomEvent('arc2:library-changed'));
-        const again = analyzeIntegrity(fixed, missSet);
-        const err2 = again.filter((i) => i.level === 'error');
-        if (err2.length) setInfoModal(err2.map((e) => e.detail).join('\n'));
-        else setInfoModal('Исправления применены.');
+    setIntegrityBusy(true);
+    try {
+      const meta = (await window.arc.readMetadata()) as ArcMetadataV1 | null;
+      if (!meta) {
+        setInfoModal('Нет метаданных библиотеки.');
+        return;
       }
-    });
+      const refs = collectReferencedMediaPathsFromMeta(meta);
+      const [{ missing }, { orphans }] = await Promise.all([
+        window.arc.verifyLibraryPaths(refs),
+        window.arc.scanLibraryOrphanFiles(refs)
+      ]);
+      const missSet = new Set(missing);
+      const issues = analyzeIntegrity(meta, missSet, orphans);
+      const errors = issues.filter((i) => i.level === 'error');
+      const warnings = issues.filter((i) => i.level === 'warning');
+      const fixableWarnings = warnings.filter(isWarningFixable);
+      const hasNonFixableWarnings = warnings.some((w) => !isWarningFixable(w));
+
+      if (errors.length > 0) {
+        setInfoModal(errors.map((e) => e.detail).join('\n'));
+        return;
+      }
+      if (warnings.length === 0) {
+        setInfoModal('Проверка завершена: проблем не найдено.');
+        return;
+      }
+
+      if (fixableWarnings.length > 0) {
+        const hint = hasNonFixableWarnings
+          ? '\n\nАвтоисправление затронет только метаданные (ссылки, счётчики, мудборд). Дубликаты путей к файлам и лишние файлы на диске останутся — их нужно разобрать вручную.'
+          : '';
+        setWarnModal({
+          text: `${warnings.map((w) => w.detail).join('\n')}${hint}`,
+          onFix: async () => {
+            setWarnModal(null);
+            const arc = window.arc;
+            if (!arc) return;
+            const fixed = applyMetadataWarningFixes(meta);
+            await arc.writeMetadata(fixed);
+            invalidateLibraryCache();
+            window.dispatchEvent(new CustomEvent('arc2:library-changed'));
+            const nextMeta = (await arc.readMetadata()) as ArcMetadataV1 | null;
+            if (!nextMeta) {
+              setInfoModal('Нет метаданных библиотеки.');
+              return;
+            }
+            const refs2 = collectReferencedMediaPathsFromMeta(nextMeta);
+            const [{ missing: m2 }, { orphans: o2 }] = await Promise.all([
+              arc.verifyLibraryPaths(refs2),
+              arc.scanLibraryOrphanFiles(refs2)
+            ]);
+            const again = analyzeIntegrity(nextMeta, new Set(m2), o2);
+            const err2 = again.filter((i) => i.level === 'error');
+            const warn2 = again.filter((i) => i.level === 'warning');
+            if (err2.length > 0) {
+              setInfoModal(err2.map((e) => e.detail).join('\n'));
+              return;
+            }
+            if (warn2.length === 0) {
+              setInfoModal('Исправления применены. Проблем не осталось.');
+              return;
+            }
+            setInfoModal(`Исправления применены. Остаются предупреждения:\n\n${warn2.map((w) => w.detail).join('\n')}`);
+          }
+        });
+        return;
+      }
+
+      setInfoModal(warnings.map((w) => w.detail).join('\n'));
+    } finally {
+      setIntegrityBusy(false);
+    }
   };
 
   /**
@@ -379,10 +418,25 @@ export default function SettingsStoragePanel() {
         </section>
 
         <section className="arc2-settings-block panel elevation-sunken arc2-settings-block--tile">
-          <h2 className="h2 arc2-settings-block__title">Проверка данных</h2>
-          <button type="button" className="btn btn-secondary btn-ds" onClick={() => void runIntegrity()} disabled={!window.arc}>
-            <span className="btn-ds__value">Проверить</span>
-          </button>
+          <div className="arc2-settings-storage-layout">
+            <span className="arc2-settings-storage-icon arc2-settings-storage-icon--file-search" aria-hidden="true" />
+            <div className="arc2-settings-storage-head">
+              <h2 className="h2 arc2-settings-block__title arc2-settings-storage-title">Проверка целостности файлов</h2>
+              <p className="typo-p-l arc2-settings-storage-subtitle">
+                Проверьте базу данных на наличие ошибок, отсутствующих файлов или некорректных ссылок
+              </p>
+            </div>
+            <div className="arc2-settings-storage-controls">
+              <button
+                type="button"
+                className="btn btn-primary btn-ds"
+                onClick={() => void runIntegrity()}
+                disabled={!window.arc || integrityBusy}
+              >
+                <span className="btn-ds__value">{integrityBusy ? '…' : 'Проверить'}</span>
+              </button>
+            </div>
+          </div>
         </section>
       </div>
 
