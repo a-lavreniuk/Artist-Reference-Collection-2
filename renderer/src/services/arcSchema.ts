@@ -31,4 +31,8 @@ export type ArcMetadataV1 = {
   cards: CardRecord[];
   collections: CollectionRecord[];
   moodboardCardIds: string[];
+  /** Порог сходства для поиска дублей, % (по умолчанию 85). */
+  duplicateSimilarityThresholdPct?: number;
+  /** Пропущенные пары дублей как [minId, maxId]. */
+  skippedDuplicatePairs?: [string, string][];
 };

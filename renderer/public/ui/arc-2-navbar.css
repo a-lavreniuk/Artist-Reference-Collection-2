@@ -70,6 +70,101 @@ body::-webkit-scrollbar {
   margin: 0;
 }
 
+/* Деталь коллекции: слева только по контенту (назад + H1 + правка), фильтры справа */
+.arc2-navbar-page .arc2-navbar-row--collection-detail .arc2-navbar-secondary-actions {
+  margin-left: 0;
+}
+
+.arc2-navbar-page .arc2-navbar-collection-row-spacer {
+  flex: 1 1 0;
+  min-width: 0;
+  align-self: stretch;
+}
+
+.arc2-navbar-page .arc2-navbar-collection-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Outline «Назад» на детали коллекции: токены default elevation + path → currentColor (без глобальных правил по [stroke]) */
+.arc2-navbar-page .arc2-navbar-row--collection-detail > .btn-outline.btn-ds.btn-icon-only .btn-icon-only__glyph {
+  color: var(--icons-white-default);
+}
+
+.arc2-navbar-page
+  .arc2-navbar-row--collection-detail
+  > .btn-outline.btn-ds.btn-icon-only:hover:not(:disabled):not(:focus-visible)
+  .btn-icon-only__glyph,
+.arc2-navbar-page
+  .arc2-navbar-row--collection-detail
+  > .btn-outline.btn-ds.btn-icon-only:focus-visible:not(:disabled)
+  .btn-icon-only__glyph {
+  color: var(--icons-white-hover);
+}
+
+.arc2-navbar-page .arc2-navbar-row--collection-detail > .btn-outline.btn-ds.btn-icon-only:disabled .btn-icon-only__glyph {
+  color: var(--icons-white-disabled);
+}
+
+.arc2-navbar-page .arc2-navbar-row--collection-detail > .btn-outline.btn-ds.btn-icon-only .btn-icon-only__glyph .arc-navbar-icon-svg path {
+  stroke: var(--icons-white-default);
+  fill: none;
+}
+
+.arc2-navbar-page
+  .arc2-navbar-row--collection-detail
+  > .btn-outline.btn-ds.btn-icon-only:hover:not(:disabled):not(:focus-visible)
+  .btn-icon-only__glyph
+  .arc-navbar-icon-svg
+  path,
+.arc2-navbar-page
+  .arc2-navbar-row--collection-detail
+  > .btn-outline.btn-ds.btn-icon-only:focus-visible:not(:disabled)
+  .btn-icon-only__glyph
+  .arc-navbar-icon-svg
+  path {
+  stroke: var(--icons-white-hover);
+}
+
+.arc2-navbar-page .arc2-navbar-row--collection-detail > .btn-outline.btn-ds.btn-icon-only:disabled .btn-icon-only__glyph .arc-navbar-icon-svg path {
+  stroke: var(--icons-white-disabled);
+}
+
+.arc2-navbar-page .arc2-navbar-row--collection-detail .arc2-navbar-collection-rename .btn-icon-only__glyph .arc-navbar-icon-svg path {
+  stroke: var(--icons-white-default);
+  fill: none;
+}
+
+.arc2-navbar-page
+  .arc2-navbar-row--collection-detail
+  .arc2-navbar-collection-rename.btn-ghost.btn-ds.btn-icon-only:hover:not(:disabled):not(:focus-visible)
+  .btn-icon-only__glyph
+  .arc-navbar-icon-svg
+  path,
+.arc2-navbar-page
+  .arc2-navbar-row--collection-detail
+  .arc2-navbar-collection-rename.btn-ghost.btn-ds.btn-icon-only:focus-visible:not(:disabled)
+  .btn-icon-only__glyph
+  .arc-navbar-icon-svg
+  path {
+  stroke: var(--icons-white-hover);
+}
+
+.arc2-navbar-page .arc2-navbar-collection-heading .arc2-navbar-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arc2-navbar-page .arc2-navbar-collection-rename {
+  flex-shrink: 0;
+}
+
 .arc2-navbar-page .arc2-navbar-row .tabs .tab-button {
   min-height: 40px;
 }
@@ -102,7 +197,6 @@ body::-webkit-scrollbar {
   align-items: center;
 }
 
-
 .arc2-navbar-page .arc2-navbar-action-group {
   display: flex;
   align-items: center;
@@ -112,14 +206,6 @@ body::-webkit-scrollbar {
 .arc2-navbar-page .arc2-navbar-collection-detail,
 .arc2-navbar-page .arc2-navbar-edit-detail {
   width: 100%;
-  display: flex;
-  align-items: center;
-  gap: var(--s-3);
-}
-
-.arc2-navbar-page .arc2-navbar-collection-detail-left {
-  flex: 1;
-  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--s-3);

@@ -394,7 +394,7 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
               <Tooltip content="Редактировать карточку" position="top">
                 <button
                   type="button"
-                  className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn arc2-card-inspect-segmented-btn--last"
+                  className="btn btn-outline btn-icon-only btn-ds arc2-card-inspect-segmented-btn"
                   onClick={() => void editCard()}
                   disabled={!card}
                   aria-label="Редактировать карточку"

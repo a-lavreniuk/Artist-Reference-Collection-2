@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import GalleryBoard from '../components/gallery/GalleryBoard';
 import CardInspectModal from '../components/gallery/CardInspectModal';
+import DemoAlert from '../components/layout/DemoAlert';
 import MessageModal from '../components/layout/MessageModal';
 import {
   ARC2_CARDS_CHANGED_EVENT,
@@ -42,12 +43,13 @@ export default function GalleryPage() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const [tagsIndex, setTagsIndex] = useState<Map<string, TagRecord>>(new Map());
   const [moodboardCardIds, setMoodboardCardIds] = useState<Set<string>>(new Set());
-  const [infoModalMessage, setInfoModalMessage] = useState<string | null>(null);
+  const [importModalMessage, setImportModalMessage] = useState<string | null>(null);
+  const [noSimilarAlertOpen, setNoSimilarAlertOpen] = useState(false);
 
   useEffect(() => {
     const w = (location.state as { importWarnings?: string[] } | undefined)?.importWarnings;
     if (w && w.length > 0) {
-      setInfoModalMessage(`Часть файлов не импортирована:\n\n${w.join('\n\n')}`);
+      setImportModalMessage(`Часть файлов не импортирована:\n\n${w.join('\n\n')}`);
       navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
     }
   }, [location.pathname, location.search, location.state, navigate]);
@@ -186,7 +188,7 @@ export default function GalleryPage() {
             onFindSimilar={async (id) => {
               const sim = await listSimilarCards(id, 1);
               if (sim.length === 0) {
-                setInfoModalMessage('Нет карточек с общими метками');
+                setNoSimilarAlertOpen(true);
                 return;
               }
               setOpenCardId(sim[0].id);
@@ -207,8 +209,12 @@ export default function GalleryPage() {
         />
       ) : null}
 
-      {infoModalMessage ? (
-        <MessageModal message={infoModalMessage} onClose={() => setInfoModalMessage(null)} />
+      {importModalMessage ? (
+        <MessageModal message={importModalMessage} onClose={() => setImportModalMessage(null)} />
+      ) : null}
+
+      {noSimilarAlertOpen ? (
+        <DemoAlert message="Нет похожих изображений" variant="info" onClose={() => setNoSimilarAlertOpen(false)} />
       ) : null}
     </div>
   );

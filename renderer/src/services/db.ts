@@ -57,6 +57,15 @@ function hasArcApi(): boolean {
   return typeof window !== 'undefined' && typeof window.arc !== 'undefined';
 }
 
+async function tryAppendLibraryHistory(message: string): Promise<void> {
+  if (!hasArcApi() || !window.arc?.appendHistoryLine) return;
+  try {
+    await window.arc.appendHistoryLine(message);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** После смены пути библиотеки в настройках */
 export function invalidateLibraryCache(): void {
   metadataBlob = null;
@@ -113,6 +122,17 @@ function normalizeMetadataShape(meta: ArcMetadataV1): void {
   if (!Array.isArray(meta.cards)) meta.cards = [];
   if (!Array.isArray(meta.collections)) meta.collections = [];
   if (!Array.isArray(meta.moodboardCardIds)) meta.moodboardCardIds = [];
+  if (typeof meta.duplicateSimilarityThresholdPct !== 'number' || !Number.isFinite(meta.duplicateSimilarityThresholdPct)) {
+    meta.duplicateSimilarityThresholdPct = 85;
+  } else {
+    meta.duplicateSimilarityThresholdPct = Math.min(100, Math.max(50, meta.duplicateSimilarityThresholdPct));
+  }
+  if (!Array.isArray(meta.skippedDuplicatePairs)) meta.skippedDuplicatePairs = [];
+  else {
+    meta.skippedDuplicatePairs = meta.skippedDuplicatePairs
+      .filter((x): x is [string, string] => Array.isArray(x) && x.length === 2 && typeof x[0] === 'string' && typeof x[1] === 'string')
+      .map(([a, b]) => (a < b ? [a, b] : [b, a]) as [string, string]);
+  }
 }
 
 async function persistBlob(): Promise<void> {
@@ -633,7 +653,8 @@ export async function updateTag(
 
 export async function deleteTag(tagId: string): Promise<void> {
   const tags = await readTagsUnified();
-  if (!tags.some((t) => t.id === tagId)) {
+  const removed = tags.find((t) => t.id === tagId);
+  if (!removed) {
     throw new Error('Метка не найдена');
   }
   await persistTags(tags.filter((t) => t.id !== tagId));
@@ -646,6 +667,37 @@ export async function deleteTag(tagId: string): Promise<void> {
   }
   notifyTagsChanged();
   notifyCardsChanged();
+  void tryAppendLibraryHistory(`Удалена метка «${removed.name}»`);
+}
+
+export async function getDuplicateSimilarityThresholdPct(): Promise<number> {
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    normalizeMetadataShape(metadataBlob);
+    return metadataBlob.duplicateSimilarityThresholdPct ?? 85;
+  }
+  return 85;
+}
+
+export async function setDuplicateSimilarityThresholdPct(pct: number): Promise<void> {
+  const b = await resolveBackend();
+  if (b !== 'file' || !metadataBlob) return;
+  normalizeMetadataShape(metadataBlob);
+  metadataBlob.duplicateSimilarityThresholdPct = Math.min(100, Math.max(50, pct));
+  await persistBlob();
+}
+
+export async function addSkippedDuplicatePair(idA: string, idB: string): Promise<void> {
+  const b = await resolveBackend();
+  if (b !== 'file' || !metadataBlob) return;
+  normalizeMetadataShape(metadataBlob);
+  const pair: [string, string] = idA < idB ? [idA, idB] : [idB, idA];
+  const cur = [...(metadataBlob.skippedDuplicatePairs ?? [])];
+  if (!cur.some(([x, y]) => x === pair[0] && y === pair[1])) {
+    cur.push(pair);
+  }
+  metadataBlob.skippedDuplicatePairs = cur;
+  await persistBlob();
 }
 
 export async function moveTagToCategory(tagId: string, targetCategoryId: string): Promise<void> {
@@ -728,6 +780,8 @@ export async function addCollection(name: string): Promise<CollectionRecord> {
 }
 
 export async function deleteCollection(collectionId: string): Promise<void> {
+  const existingCols = await getAllCollections();
+  const removed = existingCols.find((c) => c.id === collectionId);
   const b = await resolveBackend();
   if (b === 'file' && metadataBlob) {
     metadataBlob.collections = metadataBlob.collections.filter((c) => {
@@ -742,9 +796,23 @@ export async function deleteCollection(collectionId: string): Promise<void> {
   } else {
     const cols = (await getAllCollections()).filter((c) => c.id !== collectionId);
     safeWriteArray(STORAGE_KEYS.collections, cols);
+    const localCards = safeReadArray<unknown>(STORAGE_KEYS.cards)
+      .map(normalizeCardRecord)
+      .filter((c): c is CardRecord => c !== null);
+    if (localCards.length > 0) {
+      const next = localCards.map((c) =>
+        c.collectionIds.some((id) => id === collectionId)
+          ? { ...c, collectionIds: c.collectionIds.filter((id) => id !== collectionId) }
+          : c
+      );
+      safeWriteArray(STORAGE_KEYS.cards, next);
+    }
   }
   notifyCollectionsChanged();
   notifyCardsChanged();
+  if (removed?.name) {
+    void tryAppendLibraryHistory(`Удалена коллекция «${removed.name}»`);
+  }
 }
 
 export async function renameCollection(collectionId: string, name: string): Promise<void> {
@@ -931,48 +999,102 @@ export async function getCollectionCardCounts(): Promise<Record<string, number>>
   return m;
 }
 
-async function buildTagIdToWeightScore(): Promise<Map<string, number>> {
+/** До `limitPerCollection` карточек на коллекцию для превью на разводящей (порядок как в галерее). */
+export async function getCollectionPreviewSlices(limitPerCollection = 3): Promise<Record<string, CardRecord[]>> {
+  const all = await listCardsSorted('all');
+  const cols = await getAllCollections();
+  const out: Record<string, CardRecord[]> = {};
+  for (const col of cols) {
+    out[col.id] = [];
+  }
+  for (const card of all) {
+    for (const colId of card.collectionIds) {
+      const bucket = out[colId];
+      if (bucket && bucket.length < limitPerCollection) {
+        bucket.push(card);
+      }
+    }
+  }
+  return out;
+}
+
+/** Карта метка → вес категории (один проход по категориям). */
+async function buildTagIdToCategoryWeight(): Promise<Map<string, CategoryWeight>> {
   const cats = await getAllCategories();
-  const map = new Map<string, number>();
+  const map = new Map<string, CategoryWeight>();
   for (const cat of cats) {
-    const w = CATEGORY_WEIGHT_SCORE[cat.weight];
     const tags = await getTagsByCategory(cat.id);
     for (const t of tags) {
-      map.set(t.id, w);
+      map.set(t.id, cat.weight);
     }
   }
   return map;
 }
 
+function scoreOverlapLex(
+  baseTagIds: string[],
+  candTagIds: string[],
+  categoryWeightByTag: Map<string, CategoryWeight>
+): { scoreHigh: number; scoreMedium: number; scoreLow: number } | null {
+  const candSet = new Set(candTagIds);
+  let scoreHigh = 0;
+  let scoreMedium = 0;
+  let scoreLow = 0;
+  let passesGate = false;
+
+  for (const tid of baseTagIds) {
+    if (!candSet.has(tid)) continue;
+    const w = categoryWeightByTag.get(tid);
+    if (w === undefined || w === 'neutral') continue;
+    const s = CATEGORY_WEIGHT_SCORE[w];
+    if (w === 'high' || w === 'medium') passesGate = true;
+    if (w === 'high') scoreHigh += s;
+    else if (w === 'medium') scoreMedium += s;
+    else if (w === 'low') scoreLow += s;
+  }
+
+  if (!passesGate) return null;
+  return { scoreHigh, scoreMedium, scoreLow };
+}
+
 /**
- * Похожие карточки: сумма весов совпавших меток (вес категории), tie-break по дате добавления.
+ * Похожие изображения: метки из категорий с весом «Нулевой» не участвуют.
+ * Кандидат допускается только при общей метке уровня «Высокий» или «Средний».
+ * Ранжирование: лексикографически по суммам (высокий → средний → низкий), tie-break по дате добавления.
  */
 export async function listSimilarCards(cardId: string, limit = 15): Promise<CardRecord[]> {
   const base = await getCardById(cardId);
   if (!base) return [];
-  const tagSet = new Set(base.tagIds);
-  if (tagSet.size === 0) return [];
 
-  const weightByTag = await buildTagIdToWeightScore();
-  const neutral = CATEGORY_WEIGHT_SCORE.neutral;
+  const categoryWeightByTag = await buildTagIdToCategoryWeight();
+
+  const baseHasGateTier = base.tagIds.some((tid) => {
+    const w = categoryWeightByTag.get(tid);
+    return w === 'high' || w === 'medium';
+  });
+  if (!baseHasGateTier) return [];
 
   const all = await listCardsSorted('all');
-  const scored = all
-    .filter((c) => c.id !== cardId && c.type === 'image')
-    .map((c) => {
-      let score = 0;
-      for (const t of c.tagIds) {
-        if (tagSet.has(t)) {
-          score += weightByTag.get(t) ?? neutral;
-        }
-      }
-      return { c, score };
-    })
-    .filter((x) => x.score > 0)
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return b.c.addedAt.localeCompare(a.c.addedAt);
-    });
+  const scored: Array<{
+    c: CardRecord;
+    scoreHigh: number;
+    scoreMedium: number;
+    scoreLow: number;
+  }> = [];
+
+  for (const c of all) {
+    if (c.id === cardId || c.type !== 'image') continue;
+    const lex = scoreOverlapLex(base.tagIds, c.tagIds, categoryWeightByTag);
+    if (!lex) continue;
+    scored.push({ c, ...lex });
+  }
+
+  scored.sort((a, b) => {
+    if (b.scoreHigh !== a.scoreHigh) return b.scoreHigh - a.scoreHigh;
+    if (b.scoreMedium !== a.scoreMedium) return b.scoreMedium - a.scoreMedium;
+    if (b.scoreLow !== a.scoreLow) return b.scoreLow - a.scoreLow;
+    return b.c.addedAt.localeCompare(a.c.addedAt);
+  });
 
   return scored.slice(0, limit).map((x) => x.c);
 }
@@ -985,6 +1107,8 @@ export async function insertImportedCards(newCards: CardRecord[]): Promise<void>
     recomputeTagUsageCounts();
     await persistBlob();
     notifyCardsChanged();
+    const n = newCards.length;
+    void tryAppendLibraryHistory(n === 1 ? 'Импорт: добавлена 1 карточка' : `Импорт: добавлено ${n} карточек`);
     return;
   }
   const legacy = safeReadArray<{ id: string; type?: string }>(STORAGE_KEYS.cards);
@@ -1080,6 +1204,7 @@ export async function deleteCard(cardId: string): Promise<void> {
       await window.arc!.deleteFileIfInsideLibrary(thumbPath);
     }
   }
+  void tryAppendLibraryHistory('Удалена карточка');
   notifyCardsChanged();
   notifyTagsChanged();
 }

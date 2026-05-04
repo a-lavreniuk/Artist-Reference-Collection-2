@@ -8,6 +8,7 @@ import TagSettingsModal, { type TagSettingsModalState } from '../components/tags
 import {
   ARC2_CATEGORIES_CHANGED_EVENT,
   ARC2_TAGS_CHANGED_EVENT,
+  ARC2_COLLECTIONS_CHANGED_EVENT,
   addTag,
   deleteTag,
   getAllCategories,
@@ -237,9 +238,11 @@ export default function AddCardsPage() {
     const onRefresh = () => void reloadCatalog();
     window.addEventListener(ARC2_CATEGORIES_CHANGED_EVENT, onRefresh);
     window.addEventListener(ARC2_TAGS_CHANGED_EVENT, onRefresh);
+    window.addEventListener(ARC2_COLLECTIONS_CHANGED_EVENT, onRefresh);
     return () => {
       window.removeEventListener(ARC2_CATEGORIES_CHANGED_EVENT, onRefresh);
       window.removeEventListener(ARC2_TAGS_CHANGED_EVENT, onRefresh);
+      window.removeEventListener(ARC2_COLLECTIONS_CHANGED_EVENT, onRefresh);
     };
   }, [reloadCatalog]);
 

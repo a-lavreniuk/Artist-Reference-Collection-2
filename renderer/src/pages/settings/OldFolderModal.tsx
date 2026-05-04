@@ -1,0 +1,77 @@
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import { hydrateArc2NavbarIcons } from '../../components/layout/navbarIconHydrate';
+
+type Props = {
+  pathLabel: string;
+  onLeave: () => void;
+  onTrash: () => void;
+  onOpenInExplorer: () => void;
+};
+
+export default function OldFolderModal({ pathLabel, onLeave, onTrash, onOpenInExplorer }: Props) {
+  const hostRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (hostRef.current) void hydrateArc2NavbarIcons(hostRef.current);
+  }, [pathLabel]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onLeave();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onLeave]);
+
+  return (
+    <div
+      ref={hostRef}
+      className="arc-modal-host"
+      aria-hidden="false"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onLeave();
+      }}
+    >
+      <section
+        className="arc-modal"
+        data-elevation="raised"
+        data-input-size="s"
+        data-btn-size="s"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="arc2OldFolderTitle"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="arc-modal__header arc-modal__header--title">
+          <h3 className="arc-modal__title" id="arc2OldFolderTitle">
+            Старая папка библиотеки
+          </h3>
+          <button type="button" className="arc-modal__close" aria-label="Закрыть" onClick={onLeave}>
+            <span className="tab-icon arc2-icon-close" aria-hidden="true" />
+          </button>
+        </header>
+        <div className="arc-modal__body">
+          <div className="arc-modal__slot">
+            <p className="arc-modal__slot-text">
+              Перенос завершён. Папка: <code className="typo-p-m">{pathLabel}</code>
+            </p>
+            <p className="arc-modal__slot-text hint">Что сделать со старой папкой на диске?</p>
+          </div>
+        </div>
+        <footer className="arc-modal__footer arc-modal__footer--actions-3">
+          <button type="button" className="btn btn-danger btn-ds btn-s" onClick={onTrash}>
+            <span className="btn-ds__value">Удалить</span>
+          </button>
+          <div className="arc-modal__footer-right">
+            <button type="button" className="btn btn-outline btn-ds btn-s" onClick={onOpenInExplorer}>
+              <span className="btn-ds__value">Открыть в проводнике</span>
+            </button>
+            <button type="button" className="btn btn-primary btn-ds btn-s" onClick={onLeave}>
+              <span className="btn-ds__value">Оставить</span>
+            </button>
+          </div>
+        </footer>
+      </section>
+    </div>
+  );
+}

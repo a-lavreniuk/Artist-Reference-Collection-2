@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import TopNavbar from './TopNavbar';
+import MaintenanceBanner from './MaintenanceBanner';
+import PendingRestoreModal from './PendingRestoreModal';
 
 export default function AppLayout() {
   useEffect(() => {
@@ -26,10 +28,12 @@ export default function AppLayout() {
 
   return (
     <main className="arc2-navbar-shell">
+      <MaintenanceBanner />
       <TopNavbar />
       <div className="arc2-app-outlet">
         <Outlet />
       </div>
+      <PendingRestoreModal />
     </main>
   );
 }

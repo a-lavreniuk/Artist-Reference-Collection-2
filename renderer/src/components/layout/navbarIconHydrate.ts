@@ -20,13 +20,17 @@ type IconKey =
   | 'chevron'
   | 'arrowUp'
   | 'arrowDown'
+  | 'arrowUpRight'
   | 'trash'
   | 'bookmark'
   | 'bookmarkPlus'
   | 'bookmarkMinus'
   | 'download'
   | 'folderOpen'
-  | 'edit';
+  | 'edit'
+  | 'tag'
+  | 'server'
+  | 'undo';
 
 const ICON_FILES: Record<IconKey, string> = {
   search: 'search_m.svg',
@@ -44,16 +48,20 @@ const ICON_FILES: Record<IconKey, string> = {
   chevron: 'chevron_m.svg',
   arrowUp: 'arrow-up_s.svg',
   arrowDown: 'arrow-down_s.svg',
+  arrowUpRight: 'arrow-up-right_m.svg',
   trash: 'trash_m.svg',
   bookmark: 'bookmark_m.svg',
   bookmarkPlus: 'bookmark-plus_m.svg',
   bookmarkMinus: 'bookmark-minus_m.svg',
   download: 'download_m.svg',
   folderOpen: 'folder-open_m.svg',
-  edit: 'edit_m.svg'
+  edit: 'edit_m.svg',
+  tag: 'tag_m.svg',
+  server: 'server_m.svg',
+  undo: 'undo_m.svg'
 };
 const SIZE_SUFFIX_RE = /_(s|m|l|xl)\.svg$/;
-type UiSize = 's' | 'm' | 'l';
+type UiSize = 's' | 'm' | 'l' | 'xl';
 
 const ICON_CLASS_TO_KEY: Record<string, IconKey> = {
   arc2_icon_search: 'search',
@@ -71,17 +79,21 @@ const ICON_CLASS_TO_KEY: Record<string, IconKey> = {
   arc2_icon_chevron: 'chevron',
   arc2_icon_arrow_up: 'arrowUp',
   arc2_icon_arrow_down: 'arrowDown',
+  arc2_icon_arrow_up_right: 'arrowUpRight',
   arc2_icon_trash: 'trash',
   arc2_icon_bookmark: 'bookmark',
   arc2_icon_bookmark_plus: 'bookmarkPlus',
   arc2_icon_bookmark_minus: 'bookmarkMinus',
   arc2_icon_download: 'download',
   arc2_icon_folder_open: 'folderOpen',
-  arc2_icon_edit: 'edit'
+  arc2_icon_edit: 'edit',
+  arc2_icon_tag: 'tag',
+  arc2_icon_server: 'server',
+  arc2_icon_undo: 'undo'
 };
 
 const ICON_SELECTOR =
-  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-trash, .arc2-icon-bookmark, .arc2-icon-bookmark-plus, .arc2-icon-bookmark-minus, .arc2-icon-download, .arc2-icon-folder-open, .arc2-icon-edit';
+  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-arrow-up-right, .arc2-icon-trash, .arc2-icon-bookmark, .arc2-icon-bookmark-plus, .arc2-icon-bookmark-minus, .arc2-icon-download, .arc2-icon-folder-open, .arc2-icon-edit, .arc2-icon-tag, .arc2-icon-server, .arc2-icon-undo';
 
 const svgMarkupCache = new Map<string, string>();
 let preloadPromise: Promise<void> | null = null;
@@ -92,6 +104,11 @@ function uniquifySvgIds(svgText: string): string {
   return svgText
     .replace(/\bid="([^"]+)"/g, (_, id: string) => `id="${id}-${sfx}"`)
     .replace(/url\(#([^)]+)\)/g, (_, ref: string) => `url(#${ref}-${sfx})`);
+}
+
+function isLikelySvgMarkup(raw: string): boolean {
+  const t = raw.replace(/^\uFEFF/, '').replace(/<\?xml[^?]*\?>/gi, '').trimStart();
+  return /^<svg\b/i.test(t);
 }
 
 function normalizeSvgForTokens(svgText: string): string {
@@ -117,10 +134,12 @@ function iconUrl(file: string): string {
   return `${normalized}${ICON_DIR}${file}`;
 }
 
-function getCurrentBtnSize(scope?: HTMLElement): UiSize {
-  const raw =
+function getIconSize(scope?: HTMLElement): UiSize {
+  const explicit = scope?.closest('[data-arc2-icon-size]')?.getAttribute('data-arc2-icon-size');
+  if (explicit === 's' || explicit === 'm' || explicit === 'l' || explicit === 'xl') return explicit;
+  const btnSize =
     scope?.closest('[data-btn-size]')?.getAttribute('data-btn-size') ?? document.body?.getAttribute('data-btn-size');
-  if (raw === 's' || raw === 'm' || raw === 'l') return raw;
+  if (btnSize === 's' || btnSize === 'm' || btnSize === 'l') return btnSize;
   return 'm';
 }
 
@@ -131,18 +150,23 @@ function withSizeVariant(file: string, size: UiSize): string {
 
 function resolveIconFile(iconKey: IconKey, scope?: HTMLElement): { preferred: string; fallback: string } {
   const fallback = ICON_FILES[iconKey];
-  const preferred = withSizeVariant(fallback, getCurrentBtnSize(scope));
+  const preferred = withSizeVariant(fallback, getIconSize(scope));
   return { preferred, fallback };
 }
 
 async function ensureSvgMarkup(file: string): Promise<string | null> {
   const cached = svgMarkupCache.get(file);
-  if (cached) return cached;
+  if (cached) {
+    if (isLikelySvgMarkup(cached)) return cached;
+    svgMarkupCache.delete(file);
+  }
   try {
     const res = await fetch(iconUrl(file));
     if (!res.ok) return null;
     const raw = (await res.text()).trim();
+    if (!isLikelySvgMarkup(raw)) return null;
     const normalized = normalizeSvgForTokens(raw);
+    if (!isLikelySvgMarkup(normalized)) return null;
     svgMarkupCache.set(file, normalized);
     return normalized;
   } catch {
@@ -170,7 +194,11 @@ function classToIconKey(element: HTMLElement): IconKey | null {
 function injectSvgMarkup(host: HTMLElement, normalizedMarkup: string, file: string): void {
   host.innerHTML = uniquifySvgIds(normalizedMarkup);
   const svg = host.querySelector('svg');
-  if (!svg) return;
+  if (!svg) {
+    host.innerHTML = '';
+    delete host.dataset.arc2IconFile;
+    return;
+  }
   svg.classList.add('arc-navbar-icon-svg');
   svg.setAttribute('aria-hidden', 'true');
   svg.removeAttribute('width');

@@ -3230,6 +3230,17 @@ body[data-elevation="raised"],
 .btn-ghost:disabled .btn-ds__icon,
 .btn-ghost:disabled .btn-icon-only__glyph { color: var(--icons-white-disabled); }
 
+.btn-outline:focus-visible:not(:disabled) .btn-ds__value,
+.btn-ghost:focus-visible:not(:disabled) .btn-ds__value { color: var(--font-white-primary-hover); }
+
+.btn-outline:focus-visible:not(:disabled) .btn-ds__counter,
+.btn-ghost:focus-visible:not(:disabled) .btn-ds__counter { color: var(--font-white-secondary-hover); }
+
+.btn-outline:focus-visible:not(:disabled) .btn-ds__icon,
+.btn-outline:focus-visible:not(:disabled) .btn-icon-only__glyph,
+.btn-ghost:focus-visible:not(:disabled) .btn-ds__icon,
+.btn-ghost:focus-visible:not(:disabled) .btn-icon-only__glyph { color: var(--icons-white-hover); }
+
 .btn-danger { background: var(--button-danger-default); border-color: var(--button-danger-border-default); }
 .btn-danger:hover:not(:disabled) { background: var(--button-danger-hover); }
 .btn-danger:hover:not(:disabled) { border-color: var(--button-danger-border-hover); }
