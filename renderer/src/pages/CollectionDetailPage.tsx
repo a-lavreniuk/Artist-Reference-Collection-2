@@ -10,6 +10,7 @@ import {
   ARC2_NAVBAR_COLLECTION_TITLE_EVENT,
   ARC2_RENAME_COLLECTION_REQUEST
 } from '../components/layout/navbarEvents';
+import ConfirmRemoveFromMoodboardModal from '../components/moodboard/ConfirmRemoveFromMoodboardModal';
 import {
   ARC2_CARDS_CHANGED_EVENT,
   deleteCollection,
@@ -18,10 +19,12 @@ import {
   getCollectionById,
   getMoodboardCardIds,
   getTagsByCategory,
+  isCardOnBoard,
   listCardsInCollection,
   listSimilarCards,
   renameCollection,
-  toggleCardInMoodboard,
+  addCardToMoodboard,
+  removeCardFromMoodboard,
   type CardRecord,
   type TagRecord
 } from '../services/db';
@@ -55,6 +58,7 @@ export default function CollectionDetailPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [noSimilarAlertOpen, setNoSimilarAlertOpen] = useState(false);
   const [moodboardCardIds, setMoodboardCardIds] = useState<Set<string>>(new Set());
+  const [removeMoodboardConfirm, setRemoveMoodboardConfirm] = useState<{ cardId: string; onBoard: boolean } | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const loadMoodboard = useCallback(async () => {
@@ -195,11 +199,21 @@ export default function CollectionDetailPage() {
             onOpenCard={(id) => setOpenCardId(id)}
             moodboardCardIds={moodboardCardIds}
             onToggleMoodboard={async (id) => {
-              const next = await toggleCardInMoodboard(id);
+              const ids = await getMoodboardCardIds();
+              if (!ids.includes(id)) {
+                await addCardToMoodboard(id);
+                setMoodboardCardIds((prev) => new Set(prev).add(id));
+                return;
+              }
+              const onBoard = await isCardOnBoard(id);
+              if (onBoard) {
+                setRemoveMoodboardConfirm({ cardId: id, onBoard: true });
+                return;
+              }
+              await removeCardFromMoodboard(id);
               setMoodboardCardIds((prev) => {
                 const copy = new Set(prev);
-                if (next) copy.add(id);
-                else copy.delete(id);
+                copy.delete(id);
                 return copy;
               });
             }}
@@ -224,6 +238,22 @@ export default function CollectionDetailPage() {
           onClose={() => setOpenCardId(null)}
           onDeleted={() => void loadPage(0, false)}
           onOpenCard={(cid) => setOpenCardId(cid)}
+          moodboardRemoveConfirm="gallery"
+        />
+      ) : null}
+
+      {removeMoodboardConfirm ? (
+        <ConfirmRemoveFromMoodboardModal
+          cardOnBoard={removeMoodboardConfirm.onBoard}
+          onClose={() => setRemoveMoodboardConfirm(null)}
+          onConfirm={async () => {
+            await removeCardFromMoodboard(removeMoodboardConfirm.cardId);
+            setMoodboardCardIds((prev) => {
+              const copy = new Set(prev);
+              copy.delete(removeMoodboardConfirm.cardId);
+              return copy;
+            });
+          }}
         />
       ) : null}
 

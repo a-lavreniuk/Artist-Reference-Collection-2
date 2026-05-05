@@ -1,4 +1,5 @@
 @import url("/ui/arc-2-navbar.css");
+@import url("./arc2-moodboard.css");
 
 /* Inline SVG из `hydrateArc2NavbarIcons`: stroke/fill → currentColor, размер с родителя */
 .btn-ds__icon > .arc-navbar-icon-svg,

@@ -13,8 +13,11 @@ import {
   getCardById,
   getCollectionCardCounts,
   listSimilarCards,
-  toggleCardInMoodboard
+  toggleCardInMoodboard,
+  isCardOnBoard,
+  removeCardFromMoodboard
 } from '../../services/db';
+import ConfirmRemoveFromMoodboardModal from '../moodboard/ConfirmRemoveFromMoodboardModal';
 import { ARC2_SEARCH_QUERY_CARD, ARC2_SEARCH_QUERY_TAG } from '../../search/searchUrl';
 import { pushRecentTagId } from '../../search/recentSearchTags';
 import { getVideoPlaybackTierFromPath, videoPlaybackDescription } from '../../media/canPlayInBrowser';
@@ -25,6 +28,8 @@ type Props = {
   onClose: () => void;
   onDeleted: () => void;
   onOpenCard: (id: string) => void;
+  /** Снятие с мудборда: из галереи — confirm только если карточка на доске; из раздела мудборд — confirm всегда */
+  moodboardRemoveConfirm?: 'gallery' | 'moodboard';
 };
 
 function SimilarThumb({
@@ -78,7 +83,14 @@ function renderDescriptionWithLinks(value: string): ReactNode {
   });
 }
 
-export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted, onOpenCard }: Props) {
+export default function CardInspectModal({
+  cardId,
+  tagsIndex,
+  onClose,
+  onDeleted,
+  onOpenCard,
+  moodboardRemoveConfirm = 'gallery'
+}: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -97,6 +109,7 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
   const [busy, setBusy] = useState(false);
   const [copyAlertVisible, setCopyAlertVisible] = useState(false);
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null);
+  const [removeMoodboardConfirm, setRemoveMoodboardConfirm] = useState<{ onBoard: boolean } | null>(null);
   const copyAlertTimerRef = useRef<number | null>(null);
   const inspectVideoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -159,13 +172,14 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (exportErrorMessage) setExportErrorMessage(null);
+        else if (removeMoodboardConfirm) setRemoveMoodboardConfirm(null);
         else if (confirmDelete) setConfirmDelete(false);
         else onClose();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, confirmDelete, exportErrorMessage]);
+  }, [onClose, confirmDelete, exportErrorMessage, removeMoodboardConfirm]);
 
   const tagsResolved =
     card?.tagIds
@@ -361,8 +375,22 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
                   onBlur={() => setIsBookmarkHovered(false)}
                   onClick={async () => {
                     if (!card) return;
-                    const next = await toggleCardInMoodboard(card.id);
-                    setInMoodboard(next);
+                    if (!inMoodboard) {
+                      const next = await toggleCardInMoodboard(card.id);
+                      setInMoodboard(next);
+                      return;
+                    }
+                    const onBoard = await isCardOnBoard(card.id);
+                    if (moodboardRemoveConfirm === 'moodboard') {
+                      setRemoveMoodboardConfirm({ onBoard });
+                      return;
+                    }
+                    if (onBoard) {
+                      setRemoveMoodboardConfirm({ onBoard: true });
+                      return;
+                    }
+                    await removeCardFromMoodboard(card.id);
+                    setInMoodboard(false);
                   }}
                   disabled={!card}
                 >
@@ -591,6 +619,18 @@ export default function CardInspectModal({ cardId, tagsIndex, onClose, onDeleted
             </footer>
           </section>
         </div>
+      ) : null}
+
+      {removeMoodboardConfirm && card ? (
+        <ConfirmRemoveFromMoodboardModal
+          hostClassName="arc-modal-host--nested"
+          cardOnBoard={removeMoodboardConfirm.onBoard}
+          onClose={() => setRemoveMoodboardConfirm(null)}
+          onConfirm={async () => {
+            await removeCardFromMoodboard(card.id);
+            setInMoodboard(false);
+          }}
+        />
       ) : null}
 
       {copyAlertVisible ? (

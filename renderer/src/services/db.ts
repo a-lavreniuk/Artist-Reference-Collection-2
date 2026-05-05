@@ -1,4 +1,5 @@
-import type { ArcMetadataV1, CardRecord, CollectionRecord } from './arcSchema';
+import type { ArcMetadataV1, CardRecord, CollectionRecord, MoodboardBoardV1 } from './arcSchema';
+import { createEmptyMoodboardBoard, normalizeMoodboardBoard } from './arcSchema';
 import { normalizeHex } from '../utils/colorPicker';
 
 export type NavbarMetrics = {
@@ -44,6 +45,7 @@ const STORAGE_KEYS = {
   cards: 'arc2.cards',
   collections: 'arc2.collections',
   moodboard: 'arc2.moodboard.cards',
+  moodboardBoard: 'arc2.moodboard.board',
   categories: 'arc2.categories',
   tags: 'arc2.tags'
 } as const;
@@ -52,6 +54,7 @@ export const ARC2_CATEGORIES_CHANGED_EVENT = 'arc2:categories-changed';
 export const ARC2_TAGS_CHANGED_EVENT = 'arc2:tags-changed';
 export const ARC2_CARDS_CHANGED_EVENT = 'arc2:cards-changed';
 export const ARC2_COLLECTIONS_CHANGED_EVENT = 'arc2:collections-changed';
+export const ARC2_MOODBOARD_BOARD_CHANGED_EVENT = 'arc2:moodboard-board-changed';
 
 function hasArcApi(): boolean {
   return typeof window !== 'undefined' && typeof window.arc !== 'undefined';
@@ -133,6 +136,9 @@ function normalizeMetadataShape(meta: ArcMetadataV1): void {
       .filter((x): x is [string, string] => Array.isArray(x) && x.length === 2 && typeof x[0] === 'string' && typeof x[1] === 'string')
       .map(([a, b]) => (a < b ? [a, b] : [b, a]) as [string, string]);
   }
+  if (meta.moodboardBoard !== undefined && meta.moodboardBoard !== null) {
+    meta.moodboardBoard = normalizeMoodboardBoard(meta.moodboardBoard);
+  }
 }
 
 async function persistBlob(): Promise<void> {
@@ -166,6 +172,17 @@ async function migrateLocalIntoFileIfNeeded(): Promise<void> {
     metadataBlob.moodboardCardIds = lsMb.map((x) => x.id).filter((id): id is string => typeof id === 'string');
   }
 
+  if (!metadataBlob.moodboardBoard) {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEYS.moodboardBoard);
+      if (raw) {
+        metadataBlob.moodboardBoard = normalizeMoodboardBoard(JSON.parse(raw) as unknown);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   recomputeTagUsageCounts();
 
   await persistBlob();
@@ -176,6 +193,7 @@ async function migrateLocalIntoFileIfNeeded(): Promise<void> {
     window.localStorage.removeItem(STORAGE_KEYS.cards);
     window.localStorage.removeItem(STORAGE_KEYS.collections);
     window.localStorage.removeItem(STORAGE_KEYS.moodboard);
+    window.localStorage.removeItem(STORAGE_KEYS.moodboardBoard);
   } catch {
     /* ignore */
   }
@@ -189,6 +207,39 @@ function notifyCardsChanged(): void {
 function notifyCollectionsChanged(): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent(ARC2_COLLECTIONS_CHANGED_EVENT));
+}
+
+function notifyMoodboardBoardChanged(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(ARC2_MOODBOARD_BOARD_CHANGED_EVENT));
+}
+
+function pruneMoodboardBoardForCard(board: MoodboardBoardV1, cardId: string): MoodboardBoardV1 {
+  return {
+    ...board,
+    imageInstances: board.imageInstances.filter((i) => i.cardId !== cardId)
+  };
+}
+
+function readMoodboardBoardFromLocalStorage(): MoodboardBoardV1 | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEYS.moodboardBoard);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return normalizeMoodboardBoard(parsed);
+  } catch {
+    return null;
+  }
+}
+
+function writeMoodboardBoardToLocalStorage(board: MoodboardBoardV1): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.moodboardBoard, JSON.stringify(board));
+  } catch {
+    /* ignore */
+  }
 }
 
 function safeReadArray<T>(key: string): T[] {
@@ -901,16 +952,73 @@ export async function addCardToMoodboard(cardId: string): Promise<void> {
   await persistMoodboardIds([...ids, cardId]);
 }
 
+async function persistMoodboardBoardInternal(board: MoodboardBoardV1): Promise<void> {
+  const normalized = normalizeMoodboardBoard(board);
+  const b = await resolveBackend();
+  if (b === 'file' && metadataBlob) {
+    metadataBlob.moodboardBoard = normalized;
+    await persistBlob();
+    notifyMoodboardBoardChanged();
+    return;
+  }
+  writeMoodboardBoardToLocalStorage(normalized);
+  notifyMoodboardBoardChanged();
+}
+
+export async function getMoodboardBoard(): Promise<MoodboardBoardV1> {
+  await resolveBackend();
+  if (metadataBlob?.moodboardBoard) {
+    return normalizeMoodboardBoard(metadataBlob.moodboardBoard);
+  }
+  const fromLs = readMoodboardBoardFromLocalStorage();
+  if (fromLs) return fromLs;
+  return createEmptyMoodboardBoard();
+}
+
+export async function saveMoodboardBoard(board: MoodboardBoardV1): Promise<void> {
+  await persistMoodboardBoardInternal(board);
+}
+
+export async function isCardOnBoard(cardId: string): Promise<boolean> {
+  const board = await getMoodboardBoard();
+  return board.imageInstances.some((i) => i.cardId === cardId);
+}
+
+export async function listMoodboardCards(params: {
+  offset: number;
+  limit: number;
+  filter: 'all' | 'images' | 'videos';
+  selectedTagIds?: string[];
+  cardIdExact?: string | null;
+}): Promise<CardRecord[]> {
+  const mbIds = await readMoodboardIdsUnified();
+  const mbSet = new Set(mbIds);
+  const sorted = await listCardsSorted(params.filter);
+  let list = sorted.filter((c) => mbSet.has(c.id));
+  const tagIds = (params.selectedTagIds ?? []).filter((id) => id.trim().length > 0);
+  list = list.filter((c) => cardHasAllTagIds(c, tagIds));
+  const cardExact = params.cardIdExact?.trim() ?? '';
+  if (cardExact) {
+    const one = list.find((c) => c.id === cardExact);
+    list = one ? [one] : [];
+  }
+  return list.slice(params.offset, params.offset + params.limit);
+}
+
 export async function removeCardFromMoodboard(cardId: string): Promise<void> {
   const ids = await readMoodboardIdsUnified();
   if (!ids.includes(cardId)) return;
   await persistMoodboardIds(ids.filter((id) => id !== cardId));
+  const board = await getMoodboardBoard();
+  await persistMoodboardBoardInternal(pruneMoodboardBoardForCard(board, cardId));
 }
 
 export async function toggleCardInMoodboard(cardId: string): Promise<boolean> {
   const ids = await readMoodboardIdsUnified();
   if (ids.includes(cardId)) {
     await persistMoodboardIds(ids.filter((id) => id !== cardId));
+    const board = await getMoodboardBoard();
+    await persistMoodboardBoardInternal(pruneMoodboardBoardForCard(board, cardId));
     return false;
   }
   await persistMoodboardIds([...ids, cardId]);
@@ -1184,8 +1292,12 @@ export async function deleteCard(cardId: string): Promise<void> {
       return c?.id !== cardId;
     });
     metadataBlob.moodboardCardIds = metadataBlob.moodboardCardIds.filter((id) => id !== cardId);
+    if (metadataBlob.moodboardBoard) {
+      metadataBlob.moodboardBoard = pruneMoodboardBoardForCard(metadataBlob.moodboardBoard, cardId);
+    }
     recomputeTagUsageCounts();
     await persistBlob();
+    notifyMoodboardBoardChanged();
   } else {
     const legacy = safeReadArray<{ id: string; type?: string }>(STORAGE_KEYS.cards);
     safeWriteArray(
@@ -1194,6 +1306,9 @@ export async function deleteCard(cardId: string): Promise<void> {
     );
     const mb = safeReadArray<{ id?: string }>(STORAGE_KEYS.moodboard).filter((x) => x.id !== cardId);
     safeWriteArray(STORAGE_KEYS.moodboard, mb);
+    const boardLs = readMoodboardBoardFromLocalStorage() ?? createEmptyMoodboardBoard();
+    writeMoodboardBoardToLocalStorage(pruneMoodboardBoardForCard(boardLs, cardId));
+    notifyMoodboardBoardChanged();
   }
 
   if (hasArcApi()) {

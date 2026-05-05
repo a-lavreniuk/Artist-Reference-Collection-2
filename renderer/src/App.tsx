@@ -5,7 +5,7 @@ import CollectionDetailPage from './pages/CollectionDetailPage';
 import CollectionsPage from './pages/CollectionsPage';
 import GalleryCardEditStubPage from './pages/GalleryCardEditStubPage';
 import GalleryPage from './pages/GalleryPage';
-import MoodboardStubPage from './pages/MoodboardStubPage';
+import MoodboardPage from './pages/MoodboardPage';
 import OnboardingStubPage from './pages/OnboardingStubPage';
 import SettingsPage from './pages/SettingsPage';
 import TagsPage from './pages/TagsPage';
@@ -22,7 +22,7 @@ export default function App() {
         <Route path="tags" element={<TagsPage />} />
         <Route path="collections/:collectionId" element={<CollectionDetailPage />} />
         <Route path="collections" element={<CollectionsPage />} />
-        <Route path="moodboard" element={<MoodboardStubPage />} />
+        <Route path="moodboard" element={<MoodboardPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="ui-kit" element={<UiKitPage />} />
         <Route path="add" element={<AddCardsPage />} />

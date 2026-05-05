@@ -1,0 +1,174 @@
+/* Страница доски мудборда: очередь, островок инструментов, канвас, зум */
+
+.arc2-moodboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.arc2-moodboard--loading {
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-6);
+}
+
+.arc2-moodboard-loading-msg {
+  margin: 0;
+  color: var(--text-elev-secondary);
+}
+
+.arc2-moodboard-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-shrink: 0;
+}
+
+.arc2-moodboard-queue {
+  flex-shrink: 0;
+  border-radius: var(--radius-l);
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  padding: var(--s-2);
+}
+
+.arc2-moodboard-queue-scroll {
+  display: flex;
+  flex-direction: row;
+  gap: var(--s-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: var(--s-1);
+  scrollbar-width: thin;
+}
+
+.arc2-moodboard-queue-tile-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.arc2-moodboard-queue-tile {
+  width: 128px;
+  height: 128px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--panel-border);
+  overflow: hidden;
+  background: var(--gray-950);
+  cursor: grab;
+}
+
+.arc2-moodboard-queue-tile:active {
+  cursor: grabbing;
+}
+
+.arc2-moodboard-queue-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.arc2-moodboard-queue-remove {
+  position: absolute;
+  top: var(--s-1);
+  right: var(--s-1);
+  z-index: 2;
+}
+
+.arc2-moodboard-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.arc2-moodboard-toolbar-host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+  flex-shrink: 0;
+}
+
+.arc2-moodboard-toolbar {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1);
+  padding: var(--s-2);
+  border-radius: var(--radius-l);
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  box-shadow: 0 var(--s-1) var(--s-3) rgb(0 0 0 / 0.35);
+}
+
+.arc2-moodboard-toolbar .btn-icon-only.is-active {
+  background: var(--gray-900);
+  border-color: var(--gray-800);
+}
+
+.arc2-moodboard-history-redo .arc-navbar-icon-svg {
+  transform: scaleX(-1);
+}
+
+.arc2-moodboard-color-swatch {
+  display: block;
+  width: var(--btn-icon-size);
+  height: var(--btn-icon-size);
+  border-radius: var(--radius-s);
+  border: 1px solid var(--panel-border);
+}
+
+.arc2-moodboard-canvas-wrap {
+  flex: 1 1 auto;
+  min-height: 320px;
+  border-radius: var(--radius-l);
+  border: 1px solid var(--panel-border);
+  overflow: hidden;
+  background: var(--gray-1000);
+  transition: box-shadow var(--transition-fast);
+}
+
+.arc2-moodboard-canvas-wrap--pan {
+  cursor: grab;
+}
+
+.arc2-moodboard-canvas-wrap--eraser-deny {
+  box-shadow: 0 0 0 2px var(--input-border-error);
+}
+
+.arc2-moodboard-zoom {
+  position: absolute;
+  right: var(--s-3);
+  bottom: var(--s-3);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-1);
+  padding: var(--s-2);
+  border-radius: var(--radius-l);
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+}
+
+.arc2-moodboard-zoom-pct {
+  min-width: 3.25rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-elev-secondary);
+}
+
+.arc2-moodboard-text-edit {
+  margin: 0;
+  padding: var(--s-2);
+  resize: none;
+  background: var(--gray-950);
+  color: var(--text-elev-primary);
+  border-radius: var(--radius-m);
+  outline: none;
+}
