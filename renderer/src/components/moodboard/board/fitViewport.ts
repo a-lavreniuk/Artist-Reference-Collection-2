@@ -1,5 +1,5 @@
 import type { MoodboardBoardV1 } from '../../../services/arcSchema';
-import { BOARD_WORLD, SCALE_MAX, SCALE_MIN } from './constants';
+import { SCALE_MAX, SCALE_MIN } from './constants';
 
 /** Вписать содержимое доски в размер контейнера (вид сверху с отступом). */
 export function fitBoardToViewport(board: MoodboardBoardV1, cw: number, ch: number): { x: number; y: number; scale: number } {
@@ -45,11 +45,10 @@ export function fitBoardToViewport(board: MoodboardBoardV1, cw: number, ch: numb
 
   const pad = 64;
   if (empty || !Number.isFinite(minX)) {
-    const scale = Math.min(cw / BOARD_WORLD, ch / BOARD_WORLD, 0.35);
-    const s = Math.max(SCALE_MIN, Math.min(SCALE_MAX, scale));
+    const s = 1;
     return {
-      x: (cw - BOARD_WORLD * s) / 2,
-      y: (ch - BOARD_WORLD * s) / 2,
+      x: cw / 2,
+      y: ch / 2,
       scale: s
     };
   }

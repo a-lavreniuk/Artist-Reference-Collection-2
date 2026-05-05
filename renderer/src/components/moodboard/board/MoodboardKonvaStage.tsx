@@ -3,10 +3,10 @@ import { Ellipse, Image as KonvaImage, Layer, Line, Rect, Stage, Text, Transform
 import type Konva from 'konva';
 import type { MoodboardBoardV1 } from '../../../services/arcSchema';
 import { getCardById } from '../../../services/db';
-import { BOARD_WORLD, SCALE_MAX, SCALE_MIN } from './constants';
+import { SCALE_MAX, SCALE_MIN } from './constants';
 import { newEntityId } from './ids';
 
-export { BOARD_WORLD, SCALE_MIN, SCALE_MAX } from './constants';
+export { SCALE_MIN, SCALE_MAX } from './constants';
 
 export type MainTool = 'select' | 'pan' | 'draw' | 'text';
 export type DrawTool = 'brush' | 'circle' | 'line' | 'rect' | 'eraser';
@@ -111,7 +111,7 @@ export default function MoodboardKonvaStage({
           next[inst.id] = null;
           continue;
         }
-        const rel = card.thumbRelativePath || card.originalRelativePath;
+        const rel = card.originalRelativePath || card.thumbRelativePath;
         if (!rel || rel === 'legacy') {
           next[inst.id] = null;
           continue;
@@ -273,8 +273,7 @@ export default function MoodboardKonvaStage({
       return;
     }
 
-    const tname = (e.target as Konva.Node).name();
-    if (mainTool === 'select' && tname === 'board-bg') {
+    if (mainTool === 'select' && (e.target === stage || e.target === layerRef.current)) {
       onSelect(null);
     }
   };
@@ -375,6 +374,20 @@ export default function MoodboardKonvaStage({
   const bgFill = typeof window !== 'undefined'
     ? getComputedStyle(document.documentElement).getPropertyValue('--sunken-bg').trim() || '#1a1a1d'
     : '#1a1a1d';
+  const dotPattern = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const c = document.createElement('canvas');
+    c.width = 20;
+    c.height = 20;
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.fillStyle = 'rgba(242, 243, 244, 0.18)';
+    ctx.beginPath();
+    ctx.arc(10, 10, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+    return c;
+  }, []);
 
   return (
     <Stage
@@ -395,13 +408,24 @@ export default function MoodboardKonvaStage({
       <Layer ref={layerRef} x={vp.x} y={vp.y} scaleX={vp.scale} scaleY={vp.scale}>
         <Rect
           name="board-bg"
-          x={0}
-          y={0}
-          width={BOARD_WORLD}
-          height={BOARD_WORLD}
+          x={-1000000}
+          y={-1000000}
+          width={2000000}
+          height={2000000}
           fill={bgFill}
-          listening
+          listening={false}
         />
+        {dotPattern ? (
+          <Rect
+            x={-1000000}
+            y={-1000000}
+            width={2000000}
+            height={2000000}
+            fillPatternImage={dotPattern}
+            fillPatternRepeat="repeat"
+            listening={false}
+          />
+        ) : null}
         {sortedImages.map((inst) => {
           const img = imagesMap[inst.id];
           const isSel = selected?.kind === 'image' && selected.id === inst.id;

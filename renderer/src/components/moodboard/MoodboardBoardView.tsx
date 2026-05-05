@@ -74,7 +74,9 @@ export default function MoodboardBoardView() {
 
   const ignoreNextBoardEventRef = useRef(false);
   const saveBoardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveViewportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSavedSnapRef = useRef<string>('');
+  const lastSavedViewportSnapRef = useRef<string>('');
 
   boardRef.current = board;
 
@@ -135,20 +137,35 @@ export default function MoodboardBoardView() {
   ]);
 
   useEffect(() => {
+    if (!board) return;
     const el = canvasWrapRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver((entries) => {
-      const cr = entries[0]?.contentRect;
-      if (!cr) return;
-      const w = Math.max(320, Math.floor(cr.width));
-      const h = Math.max(240, Math.floor(cr.height));
+    if (!el) return;
+    let raf = 0;
+
+    const measure = () => {
+      const w = Math.max(320, Math.floor(el.clientWidth));
+      const h = Math.max(240, Math.floor(el.clientHeight));
       setSize({ width: w, height: h });
-    });
-    ro.observe(el);
-    const r = el.getBoundingClientRect();
-    setSize({ width: Math.max(320, Math.floor(r.width)), height: Math.max(240, Math.floor(r.height)) });
-    return () => ro.disconnect();
-  }, []);
+    };
+
+    const scheduleMeasure = () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        measure();
+      });
+    };
+
+    // Важно: первичный замер + только resize окна.
+    // ResizeObserver здесь даёт петлю роста, т.к. canvas влияет на размер контейнера.
+    scheduleMeasure();
+    window.addEventListener('resize', scheduleMeasure);
+
+    return () => {
+      window.removeEventListener('resize', scheduleMeasure);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [board]);
 
   const queueKey = queueCards.map((c) => c.id).join(',');
   useEffect(() => {
@@ -180,13 +197,35 @@ export default function MoodboardBoardView() {
     if (!board) return;
     if (saveBoardTimerRef.current) clearTimeout(saveBoardTimerRef.current);
     saveBoardTimerRef.current = setTimeout(() => {
-      const snap = JSON.stringify(boardRef.current);
+      const b = boardRef.current;
+      if (!b) return;
+      const snap = JSON.stringify({
+        imageInstances: b.imageInstances,
+        strokes: b.strokes,
+        shapes: b.shapes,
+        texts: b.texts
+      });
       if (snap === lastSavedSnapRef.current) return;
       ignoreNextBoardEventRef.current = true;
-      void saveMoodboardBoard(boardRef.current!).then(() => {
+      void saveMoodboardBoard(b).then(() => {
         lastSavedSnapRef.current = snap;
       });
     }, 600);
+  }, [board]);
+
+  const scheduleViewportSave = useCallback(() => {
+    if (!board) return;
+    if (saveViewportTimerRef.current) clearTimeout(saveViewportTimerRef.current);
+    saveViewportTimerRef.current = setTimeout(() => {
+      const b = boardRef.current;
+      if (!b) return;
+      const snap = JSON.stringify(b.viewport);
+      if (snap === lastSavedViewportSnapRef.current) return;
+      ignoreNextBoardEventRef.current = true;
+      void saveMoodboardBoard(b).then(() => {
+        lastSavedViewportSnapRef.current = snap;
+      });
+    }, 1500);
   }, [board]);
 
   useEffect(() => {
@@ -198,8 +237,17 @@ export default function MoodboardBoardView() {
   }, [board, scheduleSave]);
 
   useEffect(() => {
+    if (!board) return;
+    scheduleViewportSave();
+    return () => {
+      if (saveViewportTimerRef.current) clearTimeout(saveViewportTimerRef.current);
+    };
+  }, [board?.viewport.x, board?.viewport.y, board?.viewport.scale, board, scheduleViewportSave]);
+
+  useEffect(() => {
     return () => {
       if (saveBoardTimerRef.current) clearTimeout(saveBoardTimerRef.current);
+      if (saveViewportTimerRef.current) clearTimeout(saveViewportTimerRef.current);
       const b = boardRef.current;
       if (b) {
         ignoreNextBoardEventRef.current = true;
@@ -282,7 +330,7 @@ export default function MoodboardBoardView() {
   );
 
   const onWheel = useCallback(
-    (e: React.WheelEvent) => {
+    (e: WheelEvent) => {
       e.preventDefault();
       const rect = canvasWrapRef.current?.getBoundingClientRect();
       if (!rect || !boardRef.current) return;
@@ -294,6 +342,16 @@ export default function MoodboardBoardView() {
     },
     [zoomAt]
   );
+
+  useEffect(() => {
+    const el = canvasWrapRef.current;
+    if (!el) return;
+    const handler = (ev: WheelEvent) => onWheel(ev);
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handler);
+    };
+  }, [onWheel]);
 
   const fitView = useCallback(() => {
     setBoard((b) => {
@@ -342,6 +400,22 @@ export default function MoodboardBoardView() {
     setSelected(null);
     setEditingTextId(null);
   }, [onBeforeMutate, selected]);
+
+  const clearBoardContent = useCallback(() => {
+    if (!boardRef.current) return;
+    if (!window.confirm('Очистить рабочую область? Карточки в очереди мудборда останутся.')) return;
+    onBeforeMutate();
+    const next = {
+      ...boardRef.current,
+      imageInstances: [],
+      strokes: [],
+      shapes: [],
+      texts: []
+    };
+    setBoard(next);
+    setSelected(null);
+    setEditingTextId(null);
+  }, [onBeforeMutate]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -529,6 +603,11 @@ export default function MoodboardBoardView() {
       const vp = b0.viewport;
       const wx = (sx - vp.x) / vp.scale;
       const wy = (sy - vp.y) / vp.scale;
+      const existing = b0.imageInstances.find((x) => x.cardId === cardId);
+      if (existing) {
+        setSelected({ kind: 'image', id: existing.id });
+        return;
+      }
       const card = await getCardById(cardId);
       if (!card) return;
       const w0 = card.width || 320;
@@ -572,6 +651,7 @@ export default function MoodboardBoardView() {
   }, [searchParams, setSearchParams]);
 
   const zoomPct = board ? Math.round(board.viewport.scale * 100) : 100;
+  const onBoardCardIds = useMemo(() => new Set((board?.imageInstances ?? []).map((x) => x.cardId)), [board]);
 
   const initialStrokeHex = normalizeHex(strokeColor) ?? '#c5c7cc';
   const initialTextHex = normalizeHex(textColor) ?? '#f2f3f4';
@@ -596,10 +676,17 @@ export default function MoodboardBoardView() {
         <div className="arc2-moodboard-queue-scroll">
           {queueCards.map((c) => (
             <div key={c.id} className="arc2-moodboard-queue-tile-wrap">
+              {(() => {
+                const alreadyOnBoard = onBoardCardIds.has(c.id);
+                return (
               <div
-                className="arc2-moodboard-queue-tile"
-                draggable
+                className={`arc2-moodboard-queue-tile${alreadyOnBoard ? ' is-on-board' : ''}`}
+                draggable={!alreadyOnBoard}
                 onDragStart={(e) => {
+                  if (alreadyOnBoard) {
+                    e.preventDefault();
+                    return;
+                  }
                   e.dataTransfer.setData(MIME_CARD, c.id);
                   e.dataTransfer.effectAllowed = 'copy';
                 }}
@@ -607,6 +694,8 @@ export default function MoodboardBoardView() {
                 {/* eslint-disable-next-line jsx-a11y/alt-text -- превью из библиотеки */}
                 <img className="arc2-moodboard-queue-thumb" src={queueThumbs[c.id] ?? undefined} />
               </div>
+                );
+              })()}
               <button
                 type="button"
                 className="arc2-moodboard-queue-remove btn-icon-only btn-icon-only--ghost"
@@ -649,6 +738,15 @@ export default function MoodboardBoardView() {
               onClick={() => redo()}
             >
               <span className="btn-icon-only__glyph tab-icon arc2-icon-undo" aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="btn-icon-only btn-icon-only--ghost"
+              aria-label="Очистить доску"
+              title="Очистить доску"
+              onClick={() => clearBoardContent()}
+            >
+              <span className="btn-icon-only__glyph tab-icon arc2-icon-trash" aria-hidden />
             </button>
           </div>
 
@@ -848,7 +946,6 @@ export default function MoodboardBoardView() {
         <div
           ref={canvasWrapRef}
           className={`arc2-moodboard-canvas-wrap${spaceHeld || panDragActive ? ' arc2-moodboard-canvas-wrap--pan' : ''}${eraserDeniedTick > 0 ? ' arc2-moodboard-canvas-wrap--eraser-deny' : ''}`}
-          onWheel={onWheel}
           onDragOver={(e) => {
             e.preventDefault();
             e.dataTransfer.dropEffect = 'copy';
