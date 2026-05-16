@@ -34,3 +34,4 @@ publish:
   provider: github
   owner: a-lavreniuk
   repo: Artist-Reference-Collection-2
+  releaseType: release
