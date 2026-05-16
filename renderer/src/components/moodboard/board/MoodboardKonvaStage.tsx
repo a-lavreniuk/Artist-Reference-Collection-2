@@ -10,7 +10,7 @@ import { newEntityId } from './ids';
 export { SCALE_MIN, SCALE_MAX } from './constants';
 
 export type MainTool = 'select' | 'pan' | 'draw' | 'text';
-export type DrawTool = 'brush' | 'circle' | 'line' | 'rect' | 'eraser';
+export type DrawTool = 'brush' | 'ellipse' | 'line' | 'rect' | 'eraser';
 
 type ShapeDraft =
   | { kind: 'rect'; x: number; y: number; w: number; h: number }
@@ -50,6 +50,7 @@ type Props = {
   erroredEraserRef: React.MutableRefObject<boolean>;
   /** Ластик по изображению — только обратная связь, без удаления */
   onEraserBlocked?: () => void;
+  showGrid?: boolean;
 };
 
 function sortByZIndex<T extends { zIndex: number }>(items: T[]): T[] {
@@ -78,7 +79,8 @@ export default function MoodboardKonvaStage({
   editingTextId,
   setEditingTextId,
   erroredEraserRef,
-  onEraserBlocked
+  onEraserBlocked,
+  showGrid = true
 }: Props) {
   const layerRef = useRef<Konva.Layer>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -249,7 +251,7 @@ export default function MoodboardKonvaStage({
                 x: w.x - 200,
                 y: w.y,
                 width: 200,
-                content: 'Текст',
+                content: '',
                 color: textColor,
                 fontSize: textFontSize,
                 align: textAlign,
@@ -261,7 +263,7 @@ export default function MoodboardKonvaStage({
                 x: w.x,
                 y: w.y,
                 width: 200,
-                content: 'Текст',
+                content: '',
                 color: textColor,
                 fontSize: textFontSize,
                 align: textAlign,
@@ -270,7 +272,6 @@ export default function MoodboardKonvaStage({
               };
       commit({ ...board, texts: [...board.texts, text] });
       onSelect({ kind: 'text', id });
-      setEditingTextId(id);
       return;
     }
 
@@ -416,7 +417,7 @@ export default function MoodboardKonvaStage({
           fill={bgFill}
           listening={false}
         />
-        {dotPattern ? (
+        {showGrid && dotPattern ? (
           <Rect
             x={-1000000}
             y={-1000000}

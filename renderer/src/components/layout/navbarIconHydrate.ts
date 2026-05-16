@@ -44,7 +44,8 @@ type IconKey =
   | 'alignLeft'
   | 'alignCenter'
   | 'alignRight'
-  | 'minus';
+  | 'minus'
+  | 'minimize';
 
 const ICON_FILES: Record<IconKey, string> = {
   search: 'search_m.svg',
@@ -86,7 +87,8 @@ const ICON_FILES: Record<IconKey, string> = {
   alignLeft: 'align-left_m.svg',
   alignCenter: 'align-center_m.svg',
   alignRight: 'align-right_m.svg',
-  minus: 'minus_m.svg'
+  minus: 'minus_m.svg',
+  minimize: 'minimize_m.svg'
 };
 const SIZE_SUFFIX_RE = /_(s|m|l|xl)\.svg$/;
 type UiSize = 's' | 'm' | 'l' | 'xl';
@@ -131,11 +133,12 @@ const ICON_CLASS_TO_KEY: Record<string, IconKey> = {
   arc2_icon_align_left: 'alignLeft',
   arc2_icon_align_center: 'alignCenter',
   arc2_icon_align_right: 'alignRight',
-  arc2_icon_minus: 'minus'
+  arc2_icon_minus: 'minus',
+  arc2_icon_minimize: 'minimize'
 };
 
 const ICON_SELECTOR =
-  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-arrow-up-right, .arc2-icon-trash, .arc2-icon-bookmark, .arc2-icon-bookmark-plus, .arc2-icon-bookmark-minus, .arc2-icon-download, .arc2-icon-folder-open, .arc2-icon-edit, .arc2-icon-tag, .arc2-icon-server, .arc2-icon-undo, .arc2-icon-cursor, .arc2-icon-pan, .arc2-icon-pencil, .arc2-icon-type, .arc2-icon-eraser, .arc2-icon-line-thin, .arc2-icon-line-thik, .arc2-icon-predictable, .arc2-icon-line, .arc2-icon-circle, .arc2-icon-align-left, .arc2-icon-align-center, .arc2-icon-align-right, .arc2-icon-minus';
+  '.arc2-icon-search, .arc2-icon-plus, .arc2-icon-minimize, .arc2-icon-images, .arc2-icon-image, .arc2-icon-play, .arc2-icon-whiteboard, .arc2-icon-hard-drive, .arc2-icon-pie-chart, .arc2-icon-history, .arc2-icon-copy, .arc2-icon-close, .arc2-icon-save, .arc2-icon-chevron, .arc2-icon-arrow-up, .arc2-icon-arrow-down, .arc2-icon-arrow-up-right, .arc2-icon-trash, .arc2-icon-bookmark, .arc2-icon-bookmark-plus, .arc2-icon-bookmark-minus, .arc2-icon-download, .arc2-icon-folder-open, .arc2-icon-edit, .arc2-icon-tag, .arc2-icon-server, .arc2-icon-undo, .arc2-icon-cursor, .arc2-icon-pan, .arc2-icon-pencil, .arc2-icon-type, .arc2-icon-eraser, .arc2-icon-line-thin, .arc2-icon-line-thik, .arc2-icon-predictable, .arc2-icon-line, .arc2-icon-circle, .arc2-icon-align-left, .arc2-icon-align-center, .arc2-icon-align-right, .arc2-icon-minus';
 
 const svgMarkupCache = new Map<string, string>();
 let preloadPromise: Promise<void> | null = null;

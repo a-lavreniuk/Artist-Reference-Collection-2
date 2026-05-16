@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useSearchParams } from 'react-router-dom';
 import MoodboardKonvaStage, {
   type DrawTool,
   type MainTool,
@@ -38,10 +37,14 @@ function isTypingTarget(t: EventTarget | null): boolean {
   return Boolean(t.isContentEditable);
 }
 
+type BoardMenuItem =
+  | { type: 'sep' }
+  | { type: 'action'; label: string; shortcut?: string; disabled?: boolean; onClick?: () => void };
+
 export default function MoodboardBoardView() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const toolbarRef = useRef<HTMLDivElement>(null);
   const canvasWrapRef = useRef<HTMLDivElement>(null);
+  const boardMenuRef = useRef<HTMLDivElement>(null);
   const boardRef = useRef<MoodboardBoardV1 | null>(null);
 
   const [board, setBoard] = useState<MoodboardBoardV1 | null>(null);
@@ -72,6 +75,9 @@ export default function MoodboardBoardView() {
 
   const [removeQueueConfirm, setRemoveQueueConfirm] = useState<{ cardId: string; onBoard: boolean } | null>(null);
   const [colorModal, setColorModal] = useState<'stroke' | 'text' | null>(null);
+  const [boardMenuOpen, setBoardMenuOpen] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
+  const [snapToGrid, setSnapToGrid] = useState(false);
 
   const ignoreNextBoardEventRef = useRef(false);
   const saveBoardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -121,6 +127,23 @@ export default function MoodboardBoardView() {
     void reloadQueue();
   }, [reloadQueue]);
 
+  useEffect(() => {
+    if (!boardMenuOpen) return;
+    const onDocMouseDown = (event: MouseEvent) => {
+      const host = boardMenuRef.current;
+      if (host && !host.contains(event.target as Node)) setBoardMenuOpen(false);
+    };
+    const onDocKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setBoardMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    document.addEventListener('keydown', onDocKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onDocMouseDown);
+      document.removeEventListener('keydown', onDocKeyDown);
+    };
+  }, [boardMenuOpen]);
+
   useLayoutEffect(() => {
     if (toolbarRef.current) void hydrateArc2NavbarIcons(toolbarRef.current);
   }, [
@@ -134,7 +157,8 @@ export default function MoodboardBoardView() {
     redoStack.length,
     board?.viewport.scale,
     editingTextId,
-    colorModal
+    colorModal,
+    boardMenuOpen
   ]);
 
   useEffect(() => {
@@ -638,14 +662,209 @@ export default function MoodboardBoardView() {
     [onBeforeMutate]
   );
 
-  const goCardsMode = useCallback(() => {
-    const next = new URLSearchParams(searchParams);
-    next.set('mf', 'cards');
-    setSearchParams(next);
-  }, [searchParams, setSearchParams]);
+  const updateSelectedZIndex = useCallback(
+    (action: 'front' | 'back' | 'forward' | 'backward') => {
+      if (!selected || !boardRef.current) return;
+      const b = boardRef.current;
+      type ZRef = { kind: 'image' | 'stroke' | 'shape' | 'text'; id: string; zIndex: number };
+      const items: ZRef[] = [
+        ...b.imageInstances.map((x) => ({ kind: 'image' as const, id: x.id, zIndex: x.zIndex })),
+        ...b.strokes.map((x) => ({ kind: 'stroke' as const, id: x.id, zIndex: x.zIndex })),
+        ...b.shapes.map((x) => ({ kind: 'shape' as const, id: x.id, zIndex: x.zIndex })),
+        ...b.texts.map((x) => ({ kind: 'text' as const, id: x.id, zIndex: x.zIndex }))
+      ];
+      const sorted = [...items].sort((a, b) => a.zIndex - b.zIndex);
+      const pos = sorted.findIndex((x) => x.kind === selected.kind && x.id === selected.id);
+      if (pos < 0) return;
+
+      const applyZ = (base: MoodboardBoardV1, kind: ZRef['kind'], id: string, zIndex: number): MoodboardBoardV1 => {
+        if (kind === 'image') {
+          return { ...base, imageInstances: base.imageInstances.map((x) => (x.id === id ? { ...x, zIndex } : x)) };
+        }
+        if (kind === 'stroke') {
+          return { ...base, strokes: base.strokes.map((x) => (x.id === id ? { ...x, zIndex } : x)) };
+        }
+        if (kind === 'shape') {
+          return { ...base, shapes: base.shapes.map((x) => (x.id === id ? { ...x, zIndex } : x)) };
+        }
+        return { ...base, texts: base.texts.map((x) => (x.id === id ? { ...x, zIndex } : x)) };
+      };
+
+      onBeforeMutate();
+      const cur = sorted[pos];
+      if (action === 'front') {
+        const maxZ = Math.max(...items.map((x) => x.zIndex));
+        setBoard(applyZ(b, cur.kind, cur.id, maxZ + 1));
+        return;
+      }
+      if (action === 'back') {
+        const minZ = Math.min(...items.map((x) => x.zIndex));
+        setBoard(applyZ(b, cur.kind, cur.id, minZ - 1));
+        return;
+      }
+      if (action === 'forward' && pos < sorted.length - 1) {
+        const other = sorted[pos + 1];
+        let next = applyZ(b, cur.kind, cur.id, other.zIndex);
+        next = applyZ(next, other.kind, other.id, cur.zIndex);
+        setBoard(next);
+        return;
+      }
+      if (action === 'backward' && pos > 0) {
+        const other = sorted[pos - 1];
+        let next = applyZ(b, cur.kind, cur.id, other.zIndex);
+        next = applyZ(next, other.kind, other.id, cur.zIndex);
+        setBoard(next);
+      }
+    },
+    [onBeforeMutate, selected]
+  );
 
   const zoomPct = board ? Math.round(board.viewport.scale * 100) : 100;
   const onBoardCardIds = useMemo(() => new Set((board?.imageInstances ?? []).map((x) => x.cardId)), [board]);
+
+  const boardMenuItems = useMemo((): BoardMenuItem[] => {
+    const hasSelection = Boolean(selected);
+    const closeMenu = () => setBoardMenuOpen(false);
+    return [
+      {
+        type: 'action',
+        label: showGrid ? 'Скрыть сетку' : 'Показать сетку',
+        onClick: () => {
+          setShowGrid((v) => !v);
+          closeMenu();
+        }
+      },
+      {
+        type: 'action',
+        label: snapToGrid ? 'Отключить привязку к сетке' : 'Привязка к сетке',
+        onClick: () => {
+          setSnapToGrid((v) => !v);
+          closeMenu();
+        }
+      },
+      { type: 'sep' },
+      {
+        type: 'action',
+        label: 'Отменить',
+        shortcut: 'Ctrl+Z',
+        disabled: undoStack.length === 0,
+        onClick: () => {
+          undo();
+          closeMenu();
+        }
+      },
+      {
+        type: 'action',
+        label: 'Вернуть',
+        shortcut: 'Ctrl+Y',
+        disabled: redoStack.length === 0,
+        onClick: () => {
+          redo();
+          closeMenu();
+        }
+      },
+      { type: 'sep' },
+      { type: 'action', label: 'Выделить всё', shortcut: 'Ctrl+A', disabled: true },
+      { type: 'action', label: 'Инвертировать выделение', disabled: true },
+      { type: 'sep' },
+      {
+        type: 'action',
+        label: 'Увеличить',
+        shortcut: 'Ctrl+=',
+        onClick: () => {
+          zoomCenterFactor(1.08);
+          closeMenu();
+        }
+      },
+      {
+        type: 'action',
+        label: 'Уменьшить',
+        shortcut: 'Ctrl+-',
+        onClick: () => {
+          zoomCenterFactor(1 / 1.08);
+          closeMenu();
+        }
+      },
+      {
+        type: 'action',
+        label: 'Масштаб 100%',
+        onClick: () => {
+          resetZoom100();
+          closeMenu();
+        }
+      },
+      {
+        type: 'action',
+        label: 'Вписать в экран',
+        onClick: () => {
+          fitView();
+          closeMenu();
+        }
+      },
+      { type: 'sep' },
+      {
+        type: 'action',
+        label: 'На передний план',
+        disabled: !hasSelection,
+        onClick: () => {
+          updateSelectedZIndex('front');
+          closeMenu();
+        }
+      },
+      {
+        type: 'action',
+        label: 'Вперёд',
+        disabled: !hasSelection,
+        onClick: () => {
+          updateSelectedZIndex('forward');
+          closeMenu();
+        }
+      },
+      {
+        type: 'action',
+        label: 'Назад',
+        disabled: !hasSelection,
+        onClick: () => {
+          updateSelectedZIndex('backward');
+          closeMenu();
+        }
+      },
+      {
+        type: 'action',
+        label: 'На задний план',
+        disabled: !hasSelection,
+        onClick: () => {
+          updateSelectedZIndex('back');
+          closeMenu();
+        }
+      },
+      { type: 'sep' },
+      { type: 'action', label: 'Отразить по горизонтали', disabled: true },
+      { type: 'action', label: 'Отразить по вертикали', disabled: true },
+      { type: 'sep' },
+      {
+        type: 'action',
+        label: 'Очистить доску',
+        onClick: () => {
+          closeMenu();
+          clearBoardContent();
+        }
+      }
+    ];
+  }, [
+    clearBoardContent,
+    fitView,
+    redo,
+    redoStack.length,
+    resetZoom100,
+    selected,
+    showGrid,
+    snapToGrid,
+    undo,
+    undoStack.length,
+    updateSelectedZIndex,
+    zoomCenterFactor
+  ]);
 
   const initialStrokeHex = normalizeHex(strokeColor) ?? '#c5c7cc';
   const initialTextHex = normalizeHex(textColor) ?? '#f2f3f4';
@@ -660,283 +879,58 @@ export default function MoodboardBoardView() {
 
   return (
     <div className="arc2-moodboard">
-      <header className="arc2-moodboard-top">
-        <button type="button" className="btn btn-outline btn-ds btn-s" data-btn-size="s" onClick={() => goCardsMode()}>
-          <span className="btn-ds__value">Карточки</span>
-        </button>
-      </header>
-
       <section className="arc2-moodboard-queue" aria-label="Очередь карточек мудборда">
-        <div className="arc2-moodboard-queue-scroll">
-          {queueCards.map((c) => (
-            <div key={c.id} className="arc2-moodboard-queue-tile-wrap">
-              {(() => {
-                const alreadyOnBoard = onBoardCardIds.has(c.id);
-                return (
-              <div
-                className={`arc2-moodboard-queue-tile${alreadyOnBoard ? ' is-on-board' : ''}`}
-                draggable={!alreadyOnBoard}
-                onDragStart={(e) => {
-                  if (alreadyOnBoard) {
-                    e.preventDefault();
-                    return;
-                  }
-                  e.dataTransfer.setData(MIME_CARD, c.id);
-                  e.dataTransfer.effectAllowed = 'copy';
-                }}
-              >
-                {/* eslint-disable-next-line jsx-a11y/alt-text -- превью из библиотеки */}
-                <img className="arc2-moodboard-queue-thumb" src={queueThumbs[c.id] ?? undefined} />
+        <div
+          className="arc2-moodboard-queue-scroll arc2-add-queue-scroll panel elevation-default"
+          role="list"
+        >
+          {queueCards.map((c) => {
+            const alreadyOnBoard = onBoardCardIds.has(c.id);
+            return (
+              <div key={c.id} className={`arc2-add-queue-tile${alreadyOnBoard ? ' is-active' : ''}`} role="listitem">
+                <div
+                  className={`arc2-add-queue-tile-main arc2-moodboard-queue-tile-main${alreadyOnBoard ? ' is-on-board' : ''}`}
+                  draggable={!alreadyOnBoard}
+                  onDragStart={(e) => {
+                    if (alreadyOnBoard) {
+                      e.preventDefault();
+                      return;
+                    }
+                    e.dataTransfer.setData(MIME_CARD, c.id);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                >
+                  {queueThumbs[c.id] ? (
+                    <img
+                      className="arc2-add-queue-tile-img arc2-moodboard-queue-thumb"
+                      src={queueThumbs[c.id] ?? undefined}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : null}
+                </div>
+                <div className="arc-ui-kit-scope arc2-add-queue-tile-remove" data-btn-size="s">
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-icon-only btn-ds arc2-add-queue-remove-btn arc2-moodboard-queue-remove"
+                    aria-label="Снять с мудборда"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const onBoard = await isCardOnBoard(c.id);
+                      setRemoveQueueConfirm({ cardId: c.id, onBoard });
+                    }}
+                  >
+                    <span className="btn-icon-only__glyph arc2-add-queue-remove-icon" aria-hidden="true" />
+                  </button>
+                </div>
               </div>
-                );
-              })()}
-              <button
-                type="button"
-                className="arc2-moodboard-queue-remove btn-icon-only btn-icon-only--ghost"
-                data-btn-size="s"
-                aria-label="Снять с мудборда"
-                onClick={async () => {
-                  const onBoard = await isCardOnBoard(c.id);
-                  setRemoveQueueConfirm({ cardId: c.id, onBoard });
-                }}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-close" aria-hidden />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
       <div ref={toolbarRef} className="arc2-moodboard-body">
-        <div
-          className="arc2-moodboard-toolbar-host"
-          data-arc2-icon-size="s"
-          data-btn-size="s"
-          aria-label="Инструменты доски"
-        >
-          <div className="arc2-moodboard-toolbar arc2-moodboard-toolbar--history">
-            <button
-              type="button"
-              className="btn-icon-only btn-icon-only--ghost"
-              aria-label="Отменить"
-              disabled={undoStack.length === 0}
-              onClick={() => undo()}
-            >
-              <span className="btn-icon-only__glyph tab-icon arc2-icon-undo" aria-hidden />
-            </button>
-            <button
-              type="button"
-              className="btn-icon-only btn-icon-only--ghost arc2-moodboard-history-redo"
-              aria-label="Вернуть"
-              disabled={redoStack.length === 0}
-              onClick={() => redo()}
-            >
-              <span className="btn-icon-only__glyph tab-icon arc2-icon-undo" aria-hidden />
-            </button>
-            <button
-              type="button"
-              className="btn-icon-only btn-icon-only--ghost"
-              aria-label="Очистить доску"
-              title="Очистить доску"
-              onClick={() => clearBoardContent()}
-            >
-              <span className="btn-icon-only__glyph tab-icon arc2-icon-trash" aria-hidden />
-            </button>
-          </div>
-
-          <div className="arc2-moodboard-toolbar arc2-moodboard-toolbar--main">
-            <button
-              type="button"
-              className={`btn-icon-only${mainTool === 'select' ? ' is-active' : ''} btn-icon-only--ghost`}
-              aria-label="Выделение"
-              aria-pressed={mainTool === 'select'}
-              onClick={() => setMainTool('select')}
-            >
-              <span className="btn-icon-only__glyph tab-icon arc2-icon-cursor" aria-hidden />
-            </button>
-            <button
-              type="button"
-              className={`btn-icon-only${mainTool === 'pan' ? ' is-active' : ''} btn-icon-only--ghost`}
-              aria-label="Панорама"
-              aria-pressed={mainTool === 'pan'}
-              onClick={() => setMainTool('pan')}
-            >
-              <span className="btn-icon-only__glyph tab-icon arc2-icon-pan" aria-hidden />
-            </button>
-            <button
-              type="button"
-              className={`btn-icon-only${mainTool === 'draw' ? ' is-active' : ''} btn-icon-only--ghost`}
-              aria-label="Рисование"
-              aria-pressed={mainTool === 'draw'}
-              onClick={() => setMainTool('draw')}
-            >
-              <span className="btn-icon-only__glyph tab-icon arc2-icon-pencil" aria-hidden />
-            </button>
-            <button
-              type="button"
-              className={`btn-icon-only${mainTool === 'text' ? ' is-active' : ''} btn-icon-only--ghost`}
-              aria-label="Текст"
-              aria-pressed={mainTool === 'text'}
-              onClick={() => setMainTool('text')}
-            >
-              <span className="btn-icon-only__glyph tab-icon arc2-icon-type" aria-hidden />
-            </button>
-          </div>
-
-          {mainTool === 'draw' ? (
-            <div className="arc2-moodboard-toolbar arc2-moodboard-toolbar--draw">
-              <button
-                type="button"
-                className={`btn-icon-only${drawTool === 'brush' ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="Кисть"
-                aria-pressed={drawTool === 'brush'}
-                onClick={() => setDrawTool('brush')}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-pencil" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={`btn-icon-only${strokeWidthPx <= 4 ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="Тонкая линия"
-                onClick={() => setStrokeWidthPx(3)}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-line-thin" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={`btn-icon-only${strokeWidthPx > 4 ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="Толстая линия"
-                onClick={() => setStrokeWidthPx(10)}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-line-thik" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={`btn-icon-only${drawTool === 'rect' ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="Прямоугольник"
-                aria-pressed={drawTool === 'rect'}
-                onClick={() => setDrawTool('rect')}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-predictable" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={`btn-icon-only${drawTool === 'ellipse' ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="Эллипс"
-                aria-pressed={drawTool === 'ellipse'}
-                onClick={() => setDrawTool('ellipse')}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-circle" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={`btn-icon-only${drawTool === 'line' ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="Линия"
-                aria-pressed={drawTool === 'line'}
-                onClick={() => setDrawTool('line')}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-line" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={`btn-icon-only${drawTool === 'eraser' ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="Ластик"
-                aria-pressed={drawTool === 'eraser'}
-                onClick={() => setDrawTool('eraser')}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-eraser" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className="btn-icon-only btn-icon-only--ghost"
-                aria-label="Цвет линии"
-                onClick={() => setColorModal('stroke')}
-              >
-                <span className="arc2-moodboard-color-swatch" style={{ backgroundColor: initialStrokeHex }} />
-              </button>
-            </div>
-          ) : null}
-
-          {mainTool === 'text' ? (
-            <div className="arc2-moodboard-toolbar arc2-moodboard-toolbar--text">
-              <button
-                type="button"
-                className={`btn btn-outline btn-ds btn-s${textFontSize <= 15 ? ' is-active' : ''}`}
-                onClick={() => {
-                  setTextFontSize(14);
-                  patchTextProps({ fontSize: 14 });
-                }}
-              >
-                <span className="btn-ds__value">S</span>
-              </button>
-              <button
-                type="button"
-                className={`btn btn-outline btn-ds btn-s${textFontSize > 15 && textFontSize < 24 ? ' is-active' : ''}`}
-                onClick={() => {
-                  setTextFontSize(20);
-                  patchTextProps({ fontSize: 20 });
-                }}
-              >
-                <span className="btn-ds__value">M</span>
-              </button>
-              <button
-                type="button"
-                className={`btn btn-outline btn-ds btn-s${textFontSize >= 24 ? ' is-active' : ''}`}
-                onClick={() => {
-                  setTextFontSize(28);
-                  patchTextProps({ fontSize: 28 });
-                }}
-              >
-                <span className="btn-ds__value">L</span>
-              </button>
-              <button
-                type="button"
-                className={`btn-icon-only${textAlign === 'left' ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="По левому краю"
-                aria-pressed={textAlign === 'left'}
-                onClick={() => {
-                  setTextAlign('left');
-                  patchTextProps({ align: 'left' });
-                }}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-align-left" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={`btn-icon-only${textAlign === 'center' ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="По центру"
-                aria-pressed={textAlign === 'center'}
-                onClick={() => {
-                  setTextAlign('center');
-                  patchTextProps({ align: 'center' });
-                }}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-align-center" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={`btn-icon-only${textAlign === 'right' ? ' is-active' : ''} btn-icon-only--ghost`}
-                aria-label="По правому краю"
-                aria-pressed={textAlign === 'right'}
-                onClick={() => {
-                  setTextAlign('right');
-                  patchTextProps({ align: 'right' });
-                }}
-              >
-                <span className="btn-icon-only__glyph tab-icon arc2-icon-align-right" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className="btn-icon-only btn-icon-only--ghost"
-                aria-label="Цвет текста"
-                onClick={() => setColorModal('text')}
-              >
-                <span className="arc2-moodboard-color-swatch" style={{ backgroundColor: initialTextHex }} />
-              </button>
-            </div>
-          ) : null}
-        </div>
-
         <div
           ref={canvasWrapRef}
           className={`arc2-moodboard-canvas-wrap${spaceHeld || panDragActive ? ' arc2-moodboard-canvas-wrap--pan' : ''}${eraserDeniedTick > 0 ? ' arc2-moodboard-canvas-wrap--eraser-deny' : ''}`}
@@ -946,6 +940,308 @@ export default function MoodboardBoardView() {
           }}
           onDrop={(e) => void onDropOnCanvas(e)}
         >
+          <div ref={boardMenuRef} className="arc2-moodboard-menu" data-btn-size="s">
+            <button
+              type="button"
+              className={`btn btn-outline btn-icon-only${boardMenuOpen ? ' is-active' : ''}`}
+              aria-label="Дополнительные действия доски"
+              aria-expanded={boardMenuOpen}
+              aria-haspopup="menu"
+              onClick={() => setBoardMenuOpen((v) => !v)}
+            >
+              <span className="arc2-moodboard-menu-burger" aria-hidden="true" />
+            </button>
+            {boardMenuOpen ? (
+              <div className="selector-dropdown arc2-moodboard-menu-dropdown" role="menu">
+                <div className="dropdown-list">
+                  {boardMenuItems.map((item, index) =>
+                    item.type === 'sep' ? (
+                      <div key={`sep-${index}`} className="arc2-moodboard-menu-sep" role="separator" />
+                    ) : (
+                      <button
+                        key={item.label}
+                        type="button"
+                        role="menuitem"
+                        className={`dropdown-item arc2-moodboard-menu-row${item.disabled ? ' is-disabled' : ''}`}
+                        disabled={item.disabled}
+                        onClick={() => item.onClick?.()}
+                      >
+                        <span>{item.label}</span>
+                        {item.shortcut ? <span className="arc2-moodboard-menu-shortcut">{item.shortcut}</span> : null}
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div
+            className="arc2-moodboard-toolbar-host"
+            data-arc2-icon-size="s"
+            data-btn-size="s"
+            aria-label="Инструменты доски"
+          >
+            <div className="arc2-moodboard-toolbar arc2-moodboard-toolbar--history">
+              <div className="btn-group btn-group-ds">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-icon-only"
+                  aria-label="Отменить"
+                  disabled={undoStack.length === 0}
+                  onClick={() => undo()}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-undo" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-icon-only arc2-moodboard-history-redo"
+                  aria-label="Вернуть"
+                  disabled={redoStack.length === 0}
+                  onClick={() => redo()}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-undo" aria-hidden />
+                </button>
+              </div>
+            </div>
+
+            <div className="arc2-moodboard-toolbar arc2-moodboard-toolbar--main">
+              <div className="btn-group btn-group-ds">
+                <button
+                  type="button"
+                  className={`btn btn-outline btn-icon-only${mainTool === 'select' ? ' is-active' : ''}`}
+                  aria-label="Выделение"
+                  aria-pressed={mainTool === 'select'}
+                  onClick={() => setMainTool('select')}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-cursor" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-outline btn-icon-only${mainTool === 'pan' ? ' is-active' : ''}`}
+                  aria-label="Панорама"
+                  aria-pressed={mainTool === 'pan'}
+                  onClick={() => setMainTool('pan')}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-pan" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-outline btn-icon-only${mainTool === 'draw' && drawTool !== 'eraser' ? ' is-active' : ''}`}
+                  aria-label="Нарисовать"
+                  aria-pressed={mainTool === 'draw' && drawTool !== 'eraser'}
+                  onClick={() => {
+                    setMainTool('draw');
+                    if (drawTool === 'eraser') setDrawTool('brush');
+                  }}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-pencil" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-outline btn-icon-only${mainTool === 'text' ? ' is-active' : ''}`}
+                  aria-label="Написать"
+                  aria-pressed={mainTool === 'text'}
+                  onClick={() => setMainTool('text')}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-type" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-outline btn-icon-only${mainTool === 'draw' && drawTool === 'eraser' ? ' is-active' : ''}`}
+                  aria-label="Ластик"
+                  aria-pressed={mainTool === 'draw' && drawTool === 'eraser'}
+                  onClick={() => {
+                    setMainTool('draw');
+                    setDrawTool('eraser');
+                  }}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-eraser" aria-hidden />
+                </button>
+              </div>
+            </div>
+
+            {mainTool === 'draw' ? (
+              <div className="arc2-moodboard-toolbar arc2-moodboard-toolbar--draw">
+                <div className="btn-group btn-group-ds">
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-icon-only${drawTool === 'brush' ? ' is-active' : ''}`}
+                    aria-label="Кисть"
+                    aria-pressed={drawTool === 'brush'}
+                    onClick={() => setDrawTool('brush')}
+                  >
+                    <span className="btn-icon-only__glyph tab-icon arc2-icon-pencil" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-icon-only${drawTool === 'rect' ? ' is-active' : ''}`}
+                    aria-label="Прямоугольник"
+                    aria-pressed={drawTool === 'rect'}
+                    onClick={() => setDrawTool('rect')}
+                  >
+                    <span className="btn-icon-only__glyph tab-icon arc2-icon-predictable" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-icon-only${drawTool === 'ellipse' ? ' is-active' : ''}`}
+                    aria-label="Эллипс"
+                    aria-pressed={drawTool === 'ellipse'}
+                    onClick={() => setDrawTool('ellipse')}
+                  >
+                    <span className="btn-icon-only__glyph tab-icon arc2-icon-circle" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-icon-only${drawTool === 'line' ? ' is-active' : ''}`}
+                    aria-label="Линия"
+                    aria-pressed={drawTool === 'line'}
+                    onClick={() => setDrawTool('line')}
+                  >
+                    <span className="btn-icon-only__glyph tab-icon arc2-icon-line" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-icon-only${strokeWidthPx <= 4 ? ' is-active' : ''}`}
+                    aria-label="Тонкая линия"
+                    onClick={() => setStrokeWidthPx(3)}
+                  >
+                    <span className="btn-icon-only__glyph tab-icon arc2-icon-line-thin" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-icon-only${strokeWidthPx > 4 ? ' is-active' : ''}`}
+                    aria-label="Толстая линия"
+                    onClick={() => setStrokeWidthPx(10)}
+                  >
+                    <span className="btn-icon-only__glyph tab-icon arc2-icon-line-thik" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-icon-only"
+                    aria-label="Цвет линии"
+                    onClick={() => setColorModal('stroke')}
+                  >
+                    <span className="arc2-moodboard-color-swatch" style={{ backgroundColor: initialStrokeHex }} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {mainTool === 'text' ? (
+              <div className="arc2-moodboard-toolbar arc2-moodboard-toolbar--text">
+                <div className="btn-group btn-group-ds">
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-ds btn-s${textFontSize <= 15 ? ' is-active' : ''}`}
+                    onClick={() => {
+                      setTextFontSize(14);
+                      patchTextProps({ fontSize: 14 });
+                    }}
+                  >
+                    <span className="btn-ds__value">S</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-ds btn-s${textFontSize > 15 && textFontSize < 24 ? ' is-active' : ''}`}
+                    onClick={() => {
+                      setTextFontSize(20);
+                      patchTextProps({ fontSize: 20 });
+                    }}
+                  >
+                    <span className="btn-ds__value">M</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-ds btn-s${textFontSize >= 24 ? ' is-active' : ''}`}
+                    onClick={() => {
+                      setTextFontSize(28);
+                      patchTextProps({ fontSize: 28 });
+                    }}
+                  >
+                    <span className="btn-ds__value">L</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-icon-only${textAlign === 'left' ? ' is-active' : ''}`}
+                    aria-label="По левому краю"
+                    aria-pressed={textAlign === 'left'}
+                    onClick={() => {
+                      setTextAlign('left');
+                      patchTextProps({ align: 'left' });
+                    }}
+                  >
+                    <span className="btn-icon-only__glyph tab-icon arc2-icon-align-left" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-icon-only${textAlign === 'center' ? ' is-active' : ''}`}
+                    aria-label="По центру"
+                    aria-pressed={textAlign === 'center'}
+                    onClick={() => {
+                      setTextAlign('center');
+                      patchTextProps({ align: 'center' });
+                    }}
+                  >
+                    <span className="btn-icon-only__glyph tab-icon arc2-icon-align-center" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn btn-outline btn-icon-only${textAlign === 'right' ? ' is-active' : ''}`}
+                    aria-label="По правому краю"
+                    aria-pressed={textAlign === 'right'}
+                    onClick={() => {
+                      setTextAlign('right');
+                      patchTextProps({ align: 'right' });
+                    }}
+                  >
+                    <span className="btn-icon-only__glyph tab-icon arc2-icon-align-right" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-icon-only"
+                    aria-label="Цвет текста"
+                    onClick={() => setColorModal('text')}
+                  >
+                    <span className="arc2-moodboard-color-swatch" style={{ backgroundColor: initialTextHex }} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="arc2-moodboard-toolbar arc2-moodboard-toolbar--zoom" aria-label="Масштаб">
+              <div className="btn-group btn-group-ds">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-icon-only"
+                  aria-label="Уменьшить"
+                  onClick={() => zoomCenterFactor(1 / 1.08)}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-minus" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-icon-only"
+                  aria-label="Увеличить"
+                  onClick={() => zoomCenterFactor(1.08)}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-plus" aria-hidden />
+                </button>
+                <button type="button" className="btn btn-outline btn-ds btn-s" onClick={() => resetZoom100()}>
+                  <span className="btn-ds__value">{zoomPct}%</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline btn-icon-only"
+                  aria-label="Вписать в экран"
+                  onClick={() => fitView()}
+                >
+                  <span className="btn-icon-only__glyph tab-icon arc2-icon-minimize" aria-hidden />
+                </button>
+              </div>
+            </div>
+          </div>
+
           <MoodboardKonvaStage
             width={size.width}
             height={size.height}
@@ -969,28 +1265,10 @@ export default function MoodboardBoardView() {
             setEditingTextId={setEditingTextId}
             erroredEraserRef={erroredEraserRef}
             onEraserBlocked={() => setEraserDeniedTick((n) => n + 1)}
+            showGrid={showGrid}
           />
         </div>
-
-        <div className="arc2-moodboard-zoom" aria-label="Масштаб">
-          <button type="button" className="btn-icon-only btn-icon-only--ghost" aria-label="Уменьшить" onClick={() => zoomCenterFactor(1 / 1.08)}>
-            <span className="btn-icon-only__glyph tab-icon arc2-icon-minus" aria-hidden />
-          </button>
-          <button type="button" className="btn-icon-only btn-icon-only--ghost" aria-label="Увеличить" onClick={() => zoomCenterFactor(1.08)}>
-            <span className="btn-icon-only__glyph tab-icon arc2-icon-plus" aria-hidden />
-          </button>
-          <button type="button" className="btn btn-outline btn-ds btn-s" onClick={() => resetZoom100()}>
-            <span className="btn-ds__value">100%</span>
-          </button>
-          <button type="button" className="btn btn-outline btn-ds btn-s" onClick={() => fitView()}>
-            <span className="btn-ds__value">Вписать</span>
-          </button>
-          <span className="arc2-moodboard-zoom-pct" aria-live="polite">
-            {zoomPct}%
-          </span>
-        </div>
       </div>
-
       {textOverlay}
 
       {removeQueueConfirm ? (
